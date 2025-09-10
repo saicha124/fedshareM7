@@ -1,0 +1,7 @@
+tensorflow==2.9.1
+numpy
+flask
+requests
+requests-toolbelt
+scikit-learn
+pandas

@@ -435,8 +435,7 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
             location.reload();
         }
         
-        // Auto-refresh page every 30 seconds
-        setInterval(refreshPage, 30000);
+        // Removed automatic page refresh to prevent interrupting training progress
     </script>
 </head>
 <body>
@@ -642,7 +641,7 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
     </style>
     <script>
         function refreshLogs() {{ location.reload(); }}
-        setInterval(refreshLogs, 5000); // Auto-refresh every 5 seconds
+        setInterval(refreshLogs, 15000); // Auto-refresh every 15 seconds (less aggressive)
     </script>
 </head>
 <body>

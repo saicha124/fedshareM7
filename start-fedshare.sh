@@ -14,9 +14,12 @@ nohup python logger_server.py &>logs/${DEST_DIRECTORY}/logger_server.log &
 nohup python fedshareleadserver.py &>logs/${DEST_DIRECTORY}/fedshareleadserver.log &
 
 for ((SERVER = 0; SERVER < N; SERVER++)); do
-  echo "Running server ${CLIENT}"
+  echo "Running server ${SERVER}"
   nohup python fedshareserver.py "${SERVER}" &>"logs/${DEST_DIRECTORY}/fedshareserver-${SERVER}.log" &
 done
+
+echo "Waiting for servers to initialize..."
+sleep 10
 
 for ((CLIENT = 0; CLIENT < M; CLIENT++)); do
   echo "Running client ${CLIENT}"

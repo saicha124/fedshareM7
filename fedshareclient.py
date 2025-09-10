@@ -56,7 +56,7 @@ def start_next_round(data):
         f"Dataset Size: {len(x_train)}")
     model.fit(x_train, y_train, epochs=config.epochs, batch_size=config.batch_size, verbose=config.verbose,
               validation_split=config.validation_split)
-    round_weight = np.array(model.get_weights())
+    round_weight = model.get_weights()
 
     all_servers = []
     servers_model = []

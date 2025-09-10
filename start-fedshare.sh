@@ -3,7 +3,7 @@
 export PYTHONUNBUFFERED=1
 
 N=2
-M=5
+M=3
 
 DEST_DIRECTORY="fedshare-mnist-client-${M}-server-${N}"
 echo "$DEST_DIRECTORY"

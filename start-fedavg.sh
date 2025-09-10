@@ -2,7 +2,7 @@
 
 export PYTHONUNBUFFERED=1
 
-M=5
+M=3
 
 DEST_DIRECTORY="logs/fedavg-mnist-client-${M}"
 echo "$DEST_DIRECTORY"

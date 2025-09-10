@@ -45,7 +45,12 @@ externalPort = 3001
 [[ports]]
 localPort = 8778
 externalPort = 3000
+exposeLocalhost = true
+
+[[ports]]
+localPort = 39339
+externalPort = 3003
 
 [deployment]
 deploymentTarget = "vm"
-run = ["python3", "-c", "from flask import Flask; app = Flask(__name__); @app.route('/') def home(): return '''<h1>FedShare Framework</h1><p>Federated Learning Framework is running! Use the terminal scripts:<br>- ./start-fedshare.sh for FedShare algorithm<br>- ./start-fedavg.sh for FedAvg algorithm<br>- ./start-scotch.sh for SCOTCH algorithm<br><br>Check the logs/ directory for training results.</p>'''; app.run(host='0.0.0.0', port=5000)"]
+run = ["python", "simple_app.py"]

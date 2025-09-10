@@ -22,21 +22,17 @@ args = "FedShare App"
 name = "FedShare App"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "python3 enhanced_app.py"
-waitForPort = 5000
-
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python enhanced_app.py"
+waitForPort = 5000
 
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 9501
-externalPort = 3001
 
 [[ports]]
 localPort = 9502

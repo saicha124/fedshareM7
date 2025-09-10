@@ -5,3 +5,42 @@ expertMode = true
 [nix]
 channel = "stable-25_05"
 packages = ["glibcLocales"]
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "FedShare App"
+
+[[workflows.workflow]]
+name = "FedShare App"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = """
+python3 -c \"
+from flask import Flask
+app = Flask(__name__)
+@app.route('/')
+def home():
+    return '''<h1>FedShare Framework</h1><p>Buttons added! Use terminal: ./start-fedshare.sh</p>'''
+app.run(host='0.0.0.0', port=5000)\""""
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[deployment]
+deploymentTarget = "vm"
+run = ["python3", "-c", "from flask import Flask; app = Flask(__name__); @app.route('/') def home(): return '''<h1>FedShare Framework</h1><p>Federated Learning Framework is running! Use the terminal scripts:<br>- ./start-fedshare.sh for FedShare algorithm<br>- ./start-fedavg.sh for FedAvg algorithm<br>- ./start-scotch.sh for SCOTCH algorithm<br><br>Check the logs/ directory for training results.</p>'''; app.run(host='0.0.0.0', port=5000)"]

@@ -34,6 +34,22 @@ waitForPort = 5000
 localPort = 5000
 externalPort = 80
 
+[[ports]]
+localPort = 7501
+externalPort = 3003
+
+[[ports]]
+localPort = 8500
+externalPort = 3002
+
+[[ports]]
+localPort = 8501
+externalPort = 3001
+
+[[ports]]
+localPort = 8778
+externalPort = 3000
+
 [deployment]
 deploymentTarget = "vm"
 run = ["python3", "-c", "from flask import Flask; app = Flask(__name__); @app.route('/') def home(): return '''<h1>FedShare Framework</h1><p>Federated Learning Framework is running! Use the terminal scripts:<br>- ./start-fedshare.sh for FedShare algorithm<br>- ./start-fedavg.sh for FedAvg algorithm<br>- ./start-scotch.sh for SCOTCH algorithm<br><br>Check the logs/ directory for training results.</p>'''; app.run(host='0.0.0.0', port=5000)"]

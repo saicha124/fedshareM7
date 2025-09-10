@@ -16,6 +16,7 @@ def home():
 @app.route('/run/<algorithm>')
 def run_algorithm(algorithm):
     """Execute the specified federated learning algorithm"""
+    print(f"=== Button clicked for {algorithm} ===")
     script_map = {
         'fedshare': './start-fedshare.sh',
         'fedavg': './start-fedavg.sh', 
@@ -23,29 +24,41 @@ def run_algorithm(algorithm):
     }
     
     if algorithm not in script_map:
+        print(f"ERROR: Invalid algorithm {algorithm}")
         return jsonify({'error': 'Invalid algorithm'}), 400
     
     # Check if already running
     if algorithm in running_processes and running_processes[algorithm].poll() is None:
+        print(f"Algorithm {algorithm} is already running")
         return jsonify({'message': f'{algorithm.upper()} is already running'}), 200
     
     try:
         # Start the script in the background
         script_path = script_map[algorithm]
+        print(f"Starting script: {script_path}")
+        
+        # Use absolute path and simpler execution
+        import os
+        full_path = os.path.abspath(script_path)
+        print(f"Full path: {full_path}")
+        print(f"File exists: {os.path.exists(full_path)}")
+        print(f"File executable: {os.access(full_path, os.X_OK)}")
+        
         process = subprocess.Popen(
-            [script_path], 
+            ['/bin/bash', script_path], 
             stdout=subprocess.PIPE, 
             stderr=subprocess.PIPE,
-            cwd='.',
-            shell=True
+            cwd='.'
         )
         
         running_processes[algorithm] = process
         process_status[algorithm] = 'running'
+        print(f"Process started with PID: {process.pid}")
         
         return redirect(url_for('home'))
         
     except Exception as e:
+        print(f"ERROR starting {algorithm}: {str(e)}")
         process_status[algorithm] = f'error: {str(e)}'
         return jsonify({'error': str(e)}), 500
 

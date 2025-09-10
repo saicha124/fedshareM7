@@ -1,5 +1,18 @@
- * Serving Flask app 'logger_server'
- * Debug mode: off
-[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
- * Running on http://127.0.0.100:8778
-[33mPress CTRL+C to quit[0m
+Traceback (most recent call last):
+  File "/home/runner/workspace/logger_server.py", line 147, in <module>
+    api.run(host=config.logger_address, port=config.logger_port, threaded=True)
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/flask/app.py", line 662, in run
+    run_simple(t.cast(str, host), port, self, **options)
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/werkzeug/serving.py", line 1093, in run_simple
+    srv = make_server(
+          ^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/werkzeug/serving.py", line 930, in make_server
+    return ThreadedWSGIServer(
+           ^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/werkzeug/serving.py", line 792, in __init__
+    self.socket = socket.fromfd(fd, address_family, socket.SOCK_STREAM)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/nix/store/7d088dip86hlzri9sk0h78b63yfmx0a0-python3-3.11.13/lib/python3.11/socket.py", line 546, in fromfd
+    nfd = dup(fd)
+          ^^^^^^^
+OSError: [Errno 9] Bad file descriptor

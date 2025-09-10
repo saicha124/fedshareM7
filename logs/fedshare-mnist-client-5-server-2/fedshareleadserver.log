@@ -1,6 +1,20 @@
- * Serving Flask app 'fedshareleadserver'
- * Debug mode: on
-[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
- * Running on http://127.0.0.4:7501
-[33mPress CTRL+C to quit[0m
- * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 317-686-494
+Traceback (most recent call last):
+  File "/home/runner/workspace/fedshareleadserver.py", line 73, in <module>
+    api.run(host=config.master_server_address, port=int(config.master_server_port), debug=True, threaded=True)
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/flask/app.py", line 662, in run
+    run_simple(t.cast(str, host), port, self, **options)
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/werkzeug/serving.py", line 1093, in run_simple
+    srv = make_server(
+          ^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/werkzeug/serving.py", line 930, in make_server
+    return ThreadedWSGIServer(
+           ^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/werkzeug/serving.py", line 792, in __init__
+    self.socket = socket.fromfd(fd, address_family, socket.SOCK_STREAM)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/nix/store/7d088dip86hlzri9sk0h78b63yfmx0a0-python3-3.11.13/lib/python3.11/socket.py", line 546, in fromfd
+    nfd = dup(fd)
+          ^^^^^^^
+OSError: [Errno 9] Bad file descriptor

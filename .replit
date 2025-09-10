@@ -48,4 +48,4 @@ externalPort = 3000
 
 [deployment]
 deploymentTarget = "vm"
-run = ["python", "simple_app.py"]
+run = ["python3", "enhanced_app.py"]

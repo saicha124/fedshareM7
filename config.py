@@ -1,12 +1,12 @@
 class Config:
-    number_of_clients = 5
-    train_dataset_size = 60000
+    number_of_clients = 3
+    train_dataset_size = 6000  # Reduced for faster training
     clients_dataset_size = [train_dataset_size/number_of_clients] * number_of_clients
     total_dataset_size = sum(clients_dataset_size)
     num_servers = 2
-    training_rounds = 3
+    training_rounds = 2  # Reduced rounds
     epochs = 1
-    batch_size = 16
+    batch_size = 32  # Larger batch size for faster training
     verbose = 1
     validation_split = 0.1
     server_base_port = 8500

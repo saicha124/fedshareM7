@@ -12,13 +12,13 @@ class Config:
     server_base_port = 8500
     master_server_index = 0
     master_server_port = 7501
-    client_address = '127.0.1.1'
-    server_address = '127.0.0.3'
-    master_server_address = '127.0.0.4'
+    client_address = '127.0.0.1'
+    server_address = '127.0.0.1'
+    master_server_address = '127.0.0.1'
     buffer_size = 4096
     client_base_port = 9500
     fedavg_server_port = 3500
-    logger_address = '127.0.0.100'
+    logger_address = '127.0.0.1'
     logger_port = 8778
     delay = 10
 

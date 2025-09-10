@@ -50,6 +50,10 @@ externalPort = 5000
 localPort = 9504
 externalPort = 6000
 
+[[ports]]
+localPort = 43149
+externalPort = 3000
+
 [deployment]
 deploymentTarget = "vm"
 run = ["python3", "enhanced_app.py"]

@@ -41,13 +41,14 @@ def start_next_round(data):
         f"Dataset Size: {len(x_train)}")
     model.fit(x_train, y_train, epochs=config.epochs, batch_size=config.batch_size, verbose=config.verbose,
               validation_split=config.validation_split)
-    round_weight = np.array(model.get_weights())
-
+    # Get model weights and handle different shapes properly
+    model_weights = model.get_weights()
+    
     layers = []
-    for index, value in enumerate(round_weight):
-        layers.append(value.astype('float64'))
+    for weight_array in model_weights:
+        layers.append(weight_array.astype('float64'))
 
-    pickle_model = pickle.dumps(np.array(layers))
+    pickle_model = pickle.dumps(layers)  # Send as list, not array
 
     flcommon.send_to_fedavg_server(pickle_model, config)
 

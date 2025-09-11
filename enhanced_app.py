@@ -20,7 +20,7 @@ def parse_logs_for_progress(algorithm):
     """Parse log files to extract training progress"""
     log_directories = {
         'fedshare': 'fedshare-mnist-client-3-server-2',
-        'fedavg': 'fedavg-mnist-client-3',
+        'fedavg': 'fedavg-mnist-client-1',  # Updated for current config
         'scotch': 'scotch-mnist-client-3-server-2'
     }
     
@@ -29,11 +29,19 @@ def parse_logs_for_progress(algorithm):
     
     log_dir = f"logs/{log_directories[algorithm]}"
     
+    # Get current config values
+    if algorithm == 'fedavg':
+        total_clients = 1  # Current simplified config
+        total_rounds = 1
+    else:
+        total_clients = 3  # Default for other algorithms
+        total_rounds = 2
+        
     progress = {
         'clients_started': 0,
-        'total_clients': 3,
+        'total_clients': total_clients,
         'current_round': 0,
-        'total_rounds': 2,
+        'total_rounds': total_rounds,
         'training_progress': 0,
         'status': 'not_started',
         'results': [],
@@ -44,7 +52,7 @@ def parse_logs_for_progress(algorithm):
         return progress
     
     # Check client logs for training progress
-    for i in range(3):  # 3 clients
+    for i in range(total_clients):
         client_log = f"{log_dir}/{algorithm}client-{i}.log"
         if os.path.exists(client_log):
             progress['clients_started'] += 1

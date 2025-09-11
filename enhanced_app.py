@@ -122,15 +122,15 @@ def parse_logs_for_progress(algorithm):
         except Exception as e:
             print(f"Error reading lead server log: {e}")
     
-    # Determine overall status
+    # Determine overall status - check completion FIRST
     if progress['clients_started'] == 0:
         progress['status'] = 'not_started'
+    elif progress['training_progress'] >= 100:
+        progress['status'] = 'completed'
     elif progress['clients_started'] < progress['total_clients']:
         progress['status'] = 'starting_clients'
     elif progress['current_round'] < progress['total_rounds']:
         progress['status'] = 'training'
-    elif progress['training_progress'] >= 100:
-        progress['status'] = 'completed'
     else:
         progress['status'] = 'training'
     

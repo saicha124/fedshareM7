@@ -37,4 +37,15 @@ Access the web interface at the main URL. Click buttons to run algorithms direct
 - Enhanced Flask app running successfully on port 5000 with 0.0.0.0 binding
 - Optimized for fast training iterations in development environment
 - Production deployment configured for VM target
-- Project fully functional with real-time web interface for federated learning algorithms
+
+## Technical Fixes Applied
+- **Flask Debug Mode**: Fixed debug=False and use_reloader=False in fedavgserver.py and fedavgclient.py to prevent nohup conflicts
+- **Memory Optimization**: Added TensorFlow threading limits (OMP_NUM_THREADS=1, TF_NUM_INTRAOP_THREADS=1, TF_NUM_INTEROP_THREADS=1) to prevent OOM issues
+- **Configuration Simplified**: Reduced to 1 client, 1 server, 1 training round, 2000 dataset size for stability testing
+- **Python Interpreter**: Standardized Python executable usage in shell scripts
+- **Process Coordination**: Improved startup delays and error handling in start-fedavg.sh
+
+## Current Status
+- Web interface fully functional with real-time progress tracking
+- FedShare and SCOTCH algorithms working properly  
+- FedAvg algorithm: Core components functional individually, distributed coordination in progress

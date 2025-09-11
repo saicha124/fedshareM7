@@ -1,10 +1,10 @@
 class Config:
-    number_of_clients = 3
-    train_dataset_size = 6000  # Reduced for faster training
+    number_of_clients = 1  # Simplified for stability
+    train_dataset_size = 2000  # Further reduced for faster execution
     clients_dataset_size = [train_dataset_size/number_of_clients] * number_of_clients
     total_dataset_size = sum(clients_dataset_size)
-    num_servers = 2
-    training_rounds = 2  # Reduced rounds
+    num_servers = 1  # Simplified
+    training_rounds = 1  # Single round for testing
     epochs = 1
     batch_size = 32  # Larger batch size for faster training
     verbose = 1

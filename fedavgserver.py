@@ -65,4 +65,4 @@ def recv_thread(data, address, clients_secret: list):
     time_logger.server_idle()
 
 
-api.run(host=config.server_address, port=config.fedavg_server_port, debug=True, threaded=True)
+api.run(host=config.server_address, port=config.fedavg_server_port, debug=False, threaded=True, use_reloader=False)

@@ -82,7 +82,7 @@ def send_to_client(client, pickle_model, config, lead_server):
 
     port = config.client_base_port + client
 
-    url = f'http://{str(ipaddress.ip_address(config.client_address) + client)}:{port}/recv'
+    url = f'http://{config.client_address}:{port}/recv'
     s = requests.Session()
     new_source = source.SourceAddressAdapter(config.master_server_address)
     s.mount('http://', new_source)
@@ -91,7 +91,7 @@ def send_to_client(client, pickle_model, config, lead_server):
 
 
 def get_ip(config):
-    return str(ipaddress.ip_address(config.client_address) + config.client_index)
+    return config.client_address
 
 
 def send_to_servers(pickle_model_list, config):

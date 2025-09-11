@@ -40,22 +40,25 @@ def recv_thread(clients_secret: list, data, address):
     secret = pickle.loads(data)
     clients_secret.append(secret)
 
-    if len(clients_secret) != config.number_of_clients:
+    # Only process when we have enough clients (handle duplicates gracefully)
+    if len(clients_secret) < config.number_of_clients:
         return
-
+        
+    # Process only the first N clients to handle duplicates
+    current_batch = clients_secret[:config.number_of_clients] 
+    clients_secret.clear()  # Clear all to prevent reprocessing
+    
     model = {}
-    for client_index in range(len(clients_secret)):
-        for layer_index in range(len(clients_secret[0])):
-            clients_secret[client_index][layer_index] = f_to_i_v(
-                i_to_f_v(clients_secret[client_index][layer_index]) / np.float32(config.number_of_clients))
+    for client_index in range(len(current_batch)):
+        for layer_index in range(len(current_batch[0])):
+            current_batch[client_index][layer_index] = f_to_i_v(
+                i_to_f_v(current_batch[client_index][layer_index]) / np.float32(config.number_of_clients))
 
-    for layer_index in range(len(clients_secret[0])):
-        secrets_summation = np.zeros(shape=clients_secret[0][layer_index].shape, dtype=np.uint64)
+    for layer_index in range(len(current_batch[0])):
+        secrets_summation = np.zeros(shape=current_batch[0][layer_index].shape, dtype=np.uint64)
         for client_index in range(config.number_of_clients):
-            secrets_summation += clients_secret[client_index][layer_index]
+            secrets_summation += current_batch[client_index][layer_index]
         model[layer_index] = secrets_summation
-
-    clients_secret.clear()
     pickled_model = pickle.dumps(model)
     flcommon.broadcast_to_clients(pickled_model, config, lead_server=False)
 
@@ -70,4 +73,4 @@ def recv_thread(clients_secret: list, data, address):
     time_logger.server_idle()
 
 
-api.run(host=config.server_address, port=int(config.server_base_port) + int(sys.argv[1]), debug=True, threaded=True)
+api.run(host=config.server_address, port=int(config.server_base_port) + int(sys.argv[1]), debug=False, use_reloader=False, threaded=True)

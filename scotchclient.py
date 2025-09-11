@@ -147,4 +147,4 @@ def start():
     return {"response": "ok"}
 
 
-api.run(host=flcommon.get_ip(config), port=config.client_base_port + int(sys.argv[1]), debug=True, threaded=True)
+api.run(host=flcommon.get_ip(config), port=config.client_base_port + int(sys.argv[1]), debug=False, use_reloader=False, threaded=True)

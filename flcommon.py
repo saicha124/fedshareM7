@@ -29,7 +29,8 @@ def f_to_i(x, scale=1 << 32):
 def i_to_f(x, scale=1 << 32):
     # Constants to avoid overflow in bit operations
     max_signed_64 = np.uint64(9223372036854775807)  # 2^63 - 1
-    max_uint64 = np.uint64(18446744073709551616)    # 2^64 (wraps to 0, but we'll handle it)
+    # Use a safe approach to avoid overflow when creating large constants
+    max_uint64 = np.iinfo(np.uint64).max  # Maximum value for uint64 without overflow
     
     t = x > max_signed_64
     if t:

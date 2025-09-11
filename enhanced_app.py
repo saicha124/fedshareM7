@@ -143,6 +143,8 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
         elif self.path == '/favicon.ico':
             self.send_response(204)  # No Content
             self.end_headers()
+        elif self.path == '/reinitialize':
+            self.reinitialize_all()
         elif self.path.startswith('/run/'):
             algorithm = self.path.split('/')[-1]
             self.run_algorithm(algorithm)
@@ -361,6 +363,23 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
             font-weight: bold;
             box-shadow: 0 4px 15px rgba(155, 89, 182, 0.3);
         }
+        .reinit-btn {
+            position: fixed;
+            top: 20px;
+            right: 140px;
+            background: linear-gradient(145deg, #e74c3c, #c0392b);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+        }
+        .reinit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(231, 76, 60, 0.5);
+        }
     </style>
     <script>
         let updateIntervals = {};
@@ -476,11 +495,36 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
             location.reload();
         }
         
+        function reinitializeAll() {
+            if (confirm('Are you sure you want to kill all clients and servers and reinitialize everything? This will stop all running processes.')) {
+                // Update button to show it's working
+                const reinitBtn = document.querySelector('.reinit-btn');
+                const originalText = reinitBtn.innerHTML;
+                reinitBtn.innerHTML = '⏳ Reinitializing...';
+                reinitBtn.disabled = true;
+                
+                fetch('/reinitialize')
+                    .then(response => response.text())
+                    .then(data => {
+                        alert('All processes killed and system reinitialized successfully!');
+                        // Reset all progress displays
+                        location.reload();
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Error during reinitialization: ' + error);
+                        reinitBtn.innerHTML = originalText;
+                        reinitBtn.disabled = false;
+                    });
+            }
+        }
+        
         // Removed automatic page refresh to prevent interrupting training progress
     </script>
 </head>
 <body>
     <button class="refresh-btn" onclick="refreshPage()">🔄 Refresh</button>
+    <button class="reinit-btn" onclick="reinitializeAll()">🛑 Reinitialize All</button>
     
     <div class="container">
         <h1>🚀 FedShare Framework</h1>
@@ -745,6 +789,65 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header('Content-type', 'application/json')
         self.end_headers()
         self.wfile.write(json.dumps(status).encode())
+
+    def reinitialize_all(self):
+        """Kill all clients and servers and reinitialize everything"""
+        try:
+            global running_processes, progress_data
+            
+            print("Starting reinitialization: killing all federated learning processes...")
+            
+            # Kill all federated learning processes by name
+            process_names = [
+                'fedshareclient.py', 'fedshareserver.py', 'fedshareleadserver.py',
+                'fedavgclient.py', 'fedavgserver.py',
+                'scotchclient.py', 'scotchserver.py',
+                'logger_server.py', 'flask_starter.py'
+            ]
+            
+            for process_name in process_names:
+                subprocess.run(['pkill', '-f', process_name], capture_output=True)
+            
+            # Also kill by algorithm names for broader cleanup
+            algorithms = ['fedshare', 'fedavg', 'scotch']
+            for algorithm in algorithms:
+                subprocess.run(['pkill', '-f', algorithm], capture_output=True)
+            
+            # Clean up tracked processes
+            for algorithm, process in running_processes.items():
+                if process and process.poll() is None:
+                    try:
+                        process.terminate()
+                    except:
+                        pass
+            
+            running_processes.clear()
+            progress_data.clear()
+            
+            # Clean up all log directories
+            log_dirs = [
+                'logs/fedshare-mnist-client-3-server-2',
+                'logs/fedavg-mnist-client-1', 
+                'logs/fedavg-mnist-client-3',
+                'logs/scotch-mnist-client-3-server-2'
+            ]
+            
+            for log_dir in log_dirs:
+                subprocess.run(['rm', '-rf', log_dir], capture_output=True)
+            
+            # Wait a moment for processes to clean up
+            time.sleep(2)
+            
+            print("Reinitialization completed successfully!")
+            
+            self.send_response(200)
+            self.send_header('Content-type', 'text/plain')
+            self.end_headers()
+            self.wfile.write("All processes killed and system reinitialized successfully!".encode())
+            
+        except Exception as e:
+            print(f"Error during reinitialization: {str(e)}")
+            self.send_error(500, f"Reinitialization failed: {str(e)}")
 
 class ReusableTCPServer(socketserver.TCPServer):
     allow_reuse_address = True

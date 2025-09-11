@@ -27,14 +27,16 @@ def f_to_i(x, scale=1 << 32):
         return np.uint64(x)
 
 def i_to_f(x, scale=1 << 32):
-    l = 64
-    max_signed = np.uint64((1 << (l - 1)) - 1)
-    t = x > max_signed
+    # Constants to avoid overflow in bit operations
+    max_signed_64 = np.uint64(9223372036854775807)  # 2^63 - 1
+    max_uint64 = np.uint64(18446744073709551616)    # 2^64 (wraps to 0, but we'll handle it)
+    
+    t = x > max_signed_64
     if t:
-        # Use numpy operations to avoid Python int overflow
+        # Handle negative values in two's complement
         x_uint64 = np.uint64(x)
-        max_val = np.uint64(1 << l)
-        x = max_val - x_uint64
+        # For values > 2^63-1, compute the two's complement negative value
+        x = np.uint64(0) - x_uint64  # This handles the wrap-around correctly
         y = -np.float32(x) / scale
     else:
         y = np.float32(np.uint64(x)) / scale

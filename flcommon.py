@@ -28,12 +28,14 @@ def f_to_i(x, scale=1 << 32):
 
 def i_to_f(x, scale=1 << 32):
     l = 64
-    t = x > (pow(2, (l - 1)) - 1)
+    max_signed = np.uint64((1 << (l - 1)) - 1)
+    t = x > max_signed
     if t:
-        x = pow(2, l) - x
-        y = np.uint64(x)
-        y = -np.float32(y) / scale
-
+        # Use numpy operations to avoid Python int overflow
+        x_uint64 = np.uint64(x)
+        max_val = np.uint64(1 << l)
+        x = max_val - x_uint64
+        y = -np.float32(x) / scale
     else:
         y = np.float32(np.uint64(x)) / scale
 

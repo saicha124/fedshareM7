@@ -70,4 +70,4 @@ def recv_thread(servers_secret, data, remote_addr):
     time_logger.lead_server_idle()
 
 
-api.run(host=config.master_server_address, port=int(config.master_server_port), debug=True, threaded=True)
+api.run(host=config.master_server_address, port=int(config.master_server_port), debug=False, threaded=True)

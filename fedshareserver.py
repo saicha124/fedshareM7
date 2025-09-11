@@ -87,4 +87,4 @@ def recv():
     return {"response": "ok"}
 
 
-api.run(host=config.server_address, port=int(config.server_base_port) + int(sys.argv[1]), debug=True, threaded=True)
+api.run(host=config.server_address, port=int(config.server_base_port) + int(sys.argv[1]), debug=False, threaded=True)

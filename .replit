@@ -37,10 +37,12 @@ externalPort = 80
 [[ports]]
 localPort = 9501
 externalPort = 3001
+exposeLocalhost = true
 
 [[ports]]
 localPort = 9502
 externalPort = 3002
+exposeLocalhost = true
 
 [[ports]]
 localPort = 9503

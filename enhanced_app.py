@@ -411,12 +411,17 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
             const metricsContainer = document.getElementById(algorithm + '-metrics');
             const runBtn = document.getElementById(algorithm + '-run-btn');
             
-            // Update progress bar
-            const totalProgress = Math.min(100, 
-                (data.clients_started / data.total_clients * 25) +
-                (data.current_round / data.total_rounds * 50) +
-                (data.training_progress * 0.25)
-            );
+            // Update progress bar - if completed, always show 100%
+            let totalProgress;
+            if (data.status === 'completed') {
+                totalProgress = 100;
+            } else {
+                totalProgress = Math.min(100, 
+                    (data.clients_started / data.total_clients * 25) +
+                    (data.current_round / data.total_rounds * 50) +
+                    (data.training_progress * 0.25)
+                );
+            }
             
             progressFill.style.width = totalProgress + '%';
             progressText.textContent = Math.round(totalProgress) + '%';

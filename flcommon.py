@@ -32,7 +32,7 @@ def i_to_f(x, scale=1 << 32):
     if t:
         x = pow(2, l) - x
         y = np.uint64(x)
-        y = np.float32(y * (-1)) / scale
+        y = -np.float32(y) / scale
 
     else:
         y = np.float32(np.uint64(x)) / scale

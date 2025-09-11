@@ -60,8 +60,14 @@ def parse_logs_for_progress(algorithm):
                 
                 # Extract training completion
                 completed_rounds = content.count('completed')
-                progress['training_progress'] = max(progress['training_progress'], 
-                                                  completed_rounds * 20)  # Each round = 20%
+                training_finished = content.count('Training finished')
+                
+                # If training is finished, set to 100%, otherwise count completed rounds
+                if training_finished > 0:
+                    progress['training_progress'] = 100
+                else:
+                    progress['training_progress'] = max(progress['training_progress'], 
+                                                      completed_rounds * 20)  # Each round = 20%
                 
                 # Extract accuracy/loss if available
                 accuracy_matches = re.findall(r'accuracy: ([\d.]+)', content)
@@ -74,20 +80,39 @@ def parse_logs_for_progress(algorithm):
             except Exception as e:
                 print(f"Error reading client log {client_log}: {e}")
     
-    # Check server logs
+    # Check server logs for completion
     server_log = f"{log_dir}/{algorithm}server.log" if algorithm == 'fedavg' else f"{log_dir}/{algorithm}server-0.log"
     if os.path.exists(server_log):
         try:
             with open(server_log, 'r') as f:
                 content = f.read()
                 
-            # Extract server aggregation info
-            aggregations = content.count('Round completed')
-            progress['training_progress'] = max(progress['training_progress'], 
-                                              aggregations * 50)  # Server aggregation progress
+            # Check for final round completion
+            final_round_completed = f"Round {progress['total_rounds']} completed" in content
+            if final_round_completed:
+                progress['training_progress'] = 100
+            else:
+                # Extract server aggregation info
+                aggregations = content.count('Round completed')
+                progress['training_progress'] = max(progress['training_progress'], 
+                                                  aggregations * 50)  # Server aggregation progress
                 
         except Exception as e:
             print(f"Error reading server log: {e}")
+    
+    # Check lead server for completion
+    lead_server_log = f"{log_dir}/{algorithm}leadserver.log"
+    if os.path.exists(lead_server_log):
+        try:
+            with open(lead_server_log, 'r') as f:
+                content = f.read()
+                
+            # Check for successful aggregation completion
+            if 'Model aggregation completed successfully' in content:
+                progress['training_progress'] = 100
+                
+        except Exception as e:
+            print(f"Error reading lead server log: {e}")
     
     # Determine overall status
     if progress['clients_started'] == 0:

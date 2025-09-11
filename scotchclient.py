@@ -55,7 +55,9 @@ def start_next_round(round_weight):
         servers_model.append({})
 
     layer_dict, layer_shape, shares_dict = {}, {}, {}
-    data = np.array(model.get_weights())
+    # Get model weights and handle different shapes properly
+    model_weights = model.get_weights()
+    data = [weight_array.astype('float64') for weight_array in model_weights]
     no_of_layers = len(data)
     for layer_index in range(no_of_layers):
         layer_dict[layer_index] = data[layer_index]

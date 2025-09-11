@@ -17,3 +17,11 @@ requests
 requests-toolbelt
 scikit-learn
 tensorflow
+emnist
+flask
+numpy
+pandas
+requests
+requests-toolbelt
+scikit-learn
+tensorflow>=2.15.0

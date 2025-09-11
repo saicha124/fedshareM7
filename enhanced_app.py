@@ -140,6 +140,9 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path == '/':
             self.serve_homepage()
+        elif self.path == '/favicon.ico':
+            self.send_response(204)  # No Content
+            self.end_headers()
         elif self.path.startswith('/run/'):
             algorithm = self.path.split('/')[-1]
             self.run_algorithm(algorithm)

@@ -1,12 +1,12 @@
 class Config:
-    number_of_clients = 5  # Proper federated learning with multiple clients
-    train_dataset_size = 3000  # Further reduced for faster execution
+    number_of_clients = 4  # Proper federated learning with multiple clients
+    train_dataset_size = 1500  # Further reduced for faster execution
     clients_dataset_size = [train_dataset_size/number_of_clients] * number_of_clients
     total_dataset_size = sum(clients_dataset_size)
     num_servers = 1  # Simplified
-    training_rounds = 3  # Single round for testing
-    epochs = 2
-    batch_size = 64  # Larger batch size for faster training
+    training_rounds = 2  # Single round for testing
+    epochs = 1
+    batch_size = 16  # Larger batch size for faster training
     verbose = 1
     validation_split = 0.1
     server_base_port = 8500

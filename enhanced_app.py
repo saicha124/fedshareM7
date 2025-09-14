@@ -72,12 +72,13 @@ def parse_logs_for_progress(algorithm):
                 completed_rounds = content.count('completed')
                 training_finished = content.count('Training finished')
                 
-                # If training is finished, set to 100%, otherwise count completed rounds
+                # If training is finished, set to 100%, otherwise calculate based on actual total rounds
                 if training_finished > 0:
                     progress['training_progress'] = 100
                 else:
-                    progress['training_progress'] = max(progress['training_progress'], 
-                                                      completed_rounds * 20)  # Each round = 20%
+                    # Calculate percentage based on actual total rounds
+                    round_progress = min(100, (completed_rounds / max(1, total_rounds)) * 100) if total_rounds > 0 else 0
+                    progress['training_progress'] = max(progress['training_progress'], round_progress)
                 
                 # Extract accuracy/loss if available
                 accuracy_matches = re.findall(r'accuracy: ([\d.]+)', content)
@@ -102,10 +103,10 @@ def parse_logs_for_progress(algorithm):
             if final_round_completed:
                 progress['training_progress'] = 100
             else:
-                # Extract server aggregation info
+                # Extract server aggregation info - calculate based on actual total rounds
                 aggregations = content.count('Round completed')
-                progress['training_progress'] = max(progress['training_progress'], 
-                                                  aggregations * 50)  # Server aggregation progress
+                aggregation_progress = min(100, (aggregations / max(1, total_rounds)) * 100) if total_rounds > 0 else 0
+                progress['training_progress'] = max(progress['training_progress'], aggregation_progress)
                 
         except Exception as e:
             print(f"Error reading server log: {e}")

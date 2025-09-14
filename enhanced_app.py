@@ -578,6 +578,7 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
             const formData = new FormData(event.target);
             const configData = {
                 clients: parseInt(formData.get('clients')),
+                servers: parseInt(formData.get('servers')),
                 rounds: parseInt(formData.get('rounds')),
                 batch_size: parseInt(formData.get('batch_size')),
                 train_dataset_size: parseInt(formData.get('train_dataset_size')),
@@ -620,6 +621,7 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
                 .then(response => response.json())
                 .then(config => {
                     document.getElementById('clients').value = config.number_of_clients;
+                    document.getElementById('servers').value = config.num_servers;
                     document.getElementById('rounds').value = config.training_rounds;
                     document.getElementById('batch_size').value = config.batch_size;
                     document.getElementById('train_dataset_size').value = config.train_dataset_size;
@@ -678,6 +680,10 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
                         <input type="number" id="clients" name="clients" min="1" max="10" value="3">
                     </div>
                     <div class="config-item">
+                        <label for="servers">Number of Servers:</label>
+                        <input type="number" id="servers" name="servers" min="1" max="5" value="2">
+                    </div>
+                    <div class="config-item">
                         <label for="rounds">Training Rounds:</label>
                         <input type="number" id="rounds" name="rounds" min="1" max="10" value="1">
                     </div>
@@ -687,7 +693,7 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
                     </div>
                     <div class="config-item">
                         <label for="train_dataset_size">Dataset Size:</label>
-                        <input type="number" id="train_dataset_size" name="train_dataset_size" min="100" max="10000" value="2000">
+                        <input type="number" id="train_dataset_size" name="train_dataset_size" min="100" max="60000" value="60000">
                     </div>
                     <div class="config-item">
                         <label for="epochs">Epochs per Round:</label>
@@ -974,6 +980,7 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
             
             current_config = {
                 'number_of_clients': config.Config.number_of_clients,
+                'num_servers': config.Config.num_servers,
                 'training_rounds': config.Config.training_rounds,
                 'batch_size': config.Config.batch_size,
                 'train_dataset_size': config.Config.train_dataset_size,
@@ -1033,6 +1040,11 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
             config_content = re.sub(
                 r'number_of_clients = \d+',
                 f'number_of_clients = {new_config["clients"]}',
+                config_content
+            )
+            config_content = re.sub(
+                r'num_servers = \d+',
+                f'num_servers = {new_config["servers"]}',
                 config_content
             )
             config_content = re.sub(

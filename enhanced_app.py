@@ -137,6 +137,12 @@ def parse_logs_for_progress(algorithm):
     return progress
 
 class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
+    def do_POST(self):
+        if self.path == '/config':
+            self.update_config()
+        else:
+            self.send_error(404, "Not Found")
+    
     def do_GET(self):
         if self.path == '/':
             self.serve_homepage()
@@ -157,6 +163,8 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
         elif self.path.startswith('/status/'):
             algorithm = self.path.split('/')[-1]
             self.get_status(algorithm)
+        elif self.path == '/current_config':
+            self.get_current_config()
         else:
             super().do_GET()
     
@@ -380,6 +388,48 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(231, 76, 60, 0.5);
         }
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .config-item {
+            display: flex;
+            flex-direction: column;
+        }
+        .config-item label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #2c3e50;
+        }
+        .config-item input {
+            padding: 8px 12px;
+            border: 2px solid #ecf0f1;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+        .config-item input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        .config-success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+        .config-error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
     </style>
     <script>
         let updateIntervals = {};
@@ -519,6 +569,75 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
             }
         }
         
+        // Configuration functions
+        function updateConfig(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            const configData = {
+                clients: parseInt(formData.get('clients')),
+                rounds: parseInt(formData.get('rounds')),
+                batch_size: parseInt(formData.get('batch_size')),
+                train_dataset_size: parseInt(formData.get('train_dataset_size')),
+                epochs: parseInt(formData.get('epochs'))
+            };
+            
+            const submitBtn = event.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '⏳ Updating...';
+            submitBtn.disabled = true;
+            
+            fetch('/config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(configData)
+            })
+            .then(response => response.text())
+            .then(data => {
+                const statusDiv = document.getElementById('config-status');
+                statusDiv.innerHTML = '<div class="config-success">✅ Configuration updated successfully! All algorithms will use the new settings.</div>';
+                setTimeout(() => {
+                    statusDiv.innerHTML = '';
+                }, 5000);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                const statusDiv = document.getElementById('config-status');
+                statusDiv.innerHTML = '<div class="config-error">❌ Error updating configuration: ' + error + '</div>';
+            })
+            .finally(() => {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            });
+        }
+        
+        function loadCurrentConfig() {
+            fetch('/current_config')
+                .then(response => response.json())
+                .then(config => {
+                    document.getElementById('clients').value = config.number_of_clients;
+                    document.getElementById('rounds').value = config.training_rounds;
+                    document.getElementById('batch_size').value = config.batch_size;
+                    document.getElementById('train_dataset_size').value = config.train_dataset_size;
+                    document.getElementById('epochs').value = config.epochs;
+                    
+                    const statusDiv = document.getElementById('config-status');
+                    statusDiv.innerHTML = '<div class="config-success">📥 Current configuration loaded from config.py</div>';
+                    setTimeout(() => {
+                        statusDiv.innerHTML = '';
+                    }, 3000);
+                })
+                .catch(error => {
+                    console.error('Error loading config:', error);
+                    const statusDiv = document.getElementById('config-status');
+                    statusDiv.innerHTML = '<div class="config-error">❌ Error loading current configuration</div>';
+                });
+        }
+        
+        // Load current config on page load
+        window.addEventListener('load', loadCurrentConfig);
+        
         // Removed automatic page refresh to prevent interrupting training progress
     </script>
 </head>
@@ -540,6 +659,44 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
             <strong>🔬 About Federated Learning:</strong> 
             Train machine learning models across distributed clients while preserving privacy. 
             Each algorithm demonstrates different approaches to aggregation and security.
+        </div>
+
+        <div class="algorithm-section" style="background: linear-gradient(145deg, #e8f5e8, #ffffff); border-color: #27ae60;">
+            <div class="algorithm-title">
+                <span class="emoji">⚙️</span>Training Configuration
+            </div>
+            <div class="algorithm-description">
+                Configure training parameters that will be used by all algorithms (FedShare, FedAvg, and SCOTCH).
+            </div>
+            <form id="config-form" onsubmit="updateConfig(event)">
+                <div class="config-grid">
+                    <div class="config-item">
+                        <label for="clients">Number of Clients:</label>
+                        <input type="number" id="clients" name="clients" min="1" max="10" value="3">
+                    </div>
+                    <div class="config-item">
+                        <label for="rounds">Training Rounds:</label>
+                        <input type="number" id="rounds" name="rounds" min="1" max="10" value="1">
+                    </div>
+                    <div class="config-item">
+                        <label for="batch_size">Batch Size:</label>
+                        <input type="number" id="batch_size" name="batch_size" min="1" max="256" value="32">
+                    </div>
+                    <div class="config-item">
+                        <label for="train_dataset_size">Dataset Size:</label>
+                        <input type="number" id="train_dataset_size" name="train_dataset_size" min="100" max="10000" value="2000">
+                    </div>
+                    <div class="config-item">
+                        <label for="epochs">Epochs per Round:</label>
+                        <input type="number" id="epochs" name="epochs" min="1" max="10" value="1">
+                    </div>
+                </div>
+                <div class="controls" style="margin-top: 20px;">
+                    <button type="submit" class="btn">💾 Update Configuration</button>
+                    <button type="button" class="btn btn-success" onclick="loadCurrentConfig()">🔄 Load Current</button>
+                </div>
+            </form>
+            <div id="config-status" style="margin-top: 10px;"></div>
         </div>
 
         <div class="algorithm-section">
@@ -789,6 +946,96 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header('Content-type', 'application/json')
         self.end_headers()
         self.wfile.write(json.dumps(status).encode())
+    
+    def get_current_config(self):
+        """Get current configuration from config.py"""
+        try:
+            # Import config to get current values
+            import importlib
+            import config
+            importlib.reload(config)  # Reload to get latest values
+            
+            current_config = {
+                'number_of_clients': config.Config.number_of_clients,
+                'training_rounds': config.Config.training_rounds,
+                'batch_size': config.Config.batch_size,
+                'train_dataset_size': config.Config.train_dataset_size,
+                'epochs': config.Config.epochs
+            }
+            
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Cache-Control', 'no-cache')
+            self.end_headers()
+            self.wfile.write(json.dumps(current_config).encode())
+            
+        except Exception as e:
+            print(f"Error getting current config: {str(e)}")
+            self.send_error(500, str(e))
+    
+    def update_config(self):
+        """Update configuration in config.py"""
+        try:
+            # Get the request body
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            new_config = json.loads(post_data.decode('utf-8'))
+            
+            # Validate the configuration
+            required_fields = ['clients', 'rounds', 'batch_size', 'train_dataset_size', 'epochs']
+            for field in required_fields:
+                if field not in new_config:
+                    self.send_error(400, f"Missing required field: {field}")
+                    return
+                if not isinstance(new_config[field], int) or new_config[field] <= 0:
+                    self.send_error(400, f"Invalid value for {field}: must be a positive integer")
+                    return
+            
+            # Read current config.py
+            with open('config.py', 'r') as f:
+                config_content = f.read()
+            
+            # Update the configuration values
+            config_content = re.sub(
+                r'number_of_clients = \d+',
+                f'number_of_clients = {new_config["clients"]}',
+                config_content
+            )
+            config_content = re.sub(
+                r'train_dataset_size = \d+',
+                f'train_dataset_size = {new_config["train_dataset_size"]}',
+                config_content
+            )
+            config_content = re.sub(
+                r'training_rounds = \d+',
+                f'training_rounds = {new_config["rounds"]}',
+                config_content
+            )
+            config_content = re.sub(
+                r'epochs = \d+',
+                f'epochs = {new_config["epochs"]}',
+                config_content
+            )
+            config_content = re.sub(
+                r'batch_size = \d+',
+                f'batch_size = {new_config["batch_size"]}',
+                config_content
+            )
+            
+            # Write the updated config back
+            with open('config.py', 'w') as f:
+                f.write(config_content)
+            
+            print(f"Configuration updated: {new_config}")
+            
+            self.send_response(200)
+            self.send_header('Content-type', 'text/plain')
+            self.end_headers()
+            self.wfile.write("Configuration updated successfully!".encode())
+            
+        except Exception as e:
+            print(f"Error updating config: {str(e)}")
+            self.send_error(500, str(e))
 
     def reinitialize_all(self):
         """Kill all clients and servers and reinitialize everything"""

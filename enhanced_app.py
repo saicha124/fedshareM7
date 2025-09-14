@@ -20,7 +20,7 @@ def parse_logs_for_progress(algorithm):
     """Parse log files to extract training progress"""
     log_directories = {
         'fedshare': 'fedshare-mnist-client-3-server-2',
-        'fedavg': 'fedavg-mnist-client-1',  # Updated for current config
+        'fedavg': 'fedavg-mnist-client-3',  # Updated for proper federated setup
         'scotch': 'scotch-mnist-client-3-server-2'
     }
     
@@ -29,9 +29,9 @@ def parse_logs_for_progress(algorithm):
     
     log_dir = f"logs/{log_directories[algorithm]}"
     
-    # Get current config values
+    # Get current config values  
     if algorithm == 'fedavg':
-        total_clients = 1  # Current simplified config
+        total_clients = 3  # Proper federated learning setup
         total_rounds = 1
     else:
         total_clients = 3  # Default for other algorithms
@@ -827,7 +827,6 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
             # Clean up all log directories
             log_dirs = [
                 'logs/fedshare-mnist-client-3-server-2',
-                'logs/fedavg-mnist-client-1', 
                 'logs/fedavg-mnist-client-3',
                 'logs/scotch-mnist-client-3-server-2'
             ]

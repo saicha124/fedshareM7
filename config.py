@@ -1,5 +1,5 @@
 class Config:
-    number_of_clients = 1  # Match FedAvg startup script
+    number_of_clients = 3  # Proper federated learning with multiple clients
     train_dataset_size = 2000  # Further reduced for faster execution
     clients_dataset_size = [train_dataset_size/number_of_clients] * number_of_clients
     total_dataset_size = sum(clients_dataset_size)

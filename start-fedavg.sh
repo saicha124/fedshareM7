@@ -6,7 +6,7 @@ export TF_NUM_INTRAOP_THREADS=1
 export TF_NUM_INTEROP_THREADS=1
 
 PYTHON=$(command -v python)
-M=1
+M=3
 
 DEST_DIRECTORY="logs/fedavg-mnist-client-${M}"
 echo "$DEST_DIRECTORY"

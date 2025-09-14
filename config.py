@@ -1,9 +1,9 @@
 class Config:
-    number_of_clients = 4  # Proper federated learning with multiple clients
+    number_of_clients = 3  # Proper federated learning with multiple clients
     train_dataset_size = 1500  # Further reduced for faster execution
     clients_dataset_size = [train_dataset_size/number_of_clients] * number_of_clients
     total_dataset_size = sum(clients_dataset_size)
-    num_servers = 1  # Simplified
+    num_servers = 2  # Match the actual scripts
     training_rounds = 2  # Single round for testing
     epochs = 1
     batch_size = 16  # Larger batch size for faster training

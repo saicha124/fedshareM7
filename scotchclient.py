@@ -123,7 +123,8 @@ def recv_thread(servers_secret: list, data, address):
         for server_index in range(len(servers_secret)):
             secrets_summation += servers_secret[server_index][layer_index]
         model[layer_index] = i_to_f_v(secrets_summation)
-    round_weight = model
+    # Convert dictionary back to list for model.set_weights()
+    round_weight = [model[layer_index] for layer_index in sorted(model.keys())]
 
     global training_round
     if config.training_rounds == training_round:

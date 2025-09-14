@@ -1,5 +1,5 @@
 class Config:
-    number_of_clients = 3  # Number of federated learning clients
+    number_of_clients = 5  # Number of federated learning clients
     train_dataset_size = 60000  # Full MNIST dataset size
     clients_dataset_size = [train_dataset_size/number_of_clients] * number_of_clients
     total_dataset_size = sum(clients_dataset_size)

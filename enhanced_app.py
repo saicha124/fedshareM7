@@ -18,24 +18,26 @@ progress_data = {}
 
 def parse_logs_for_progress(algorithm):
     """Parse log files to extract training progress"""
-    log_directories = {
-        'fedshare': 'fedshare-mnist-client-3-server-2',
-        'fedavg': 'fedavg-mnist-client-3',  # Updated for proper federated setup
-        'scotch': 'scotch-mnist-client-3-server-2'
-    }
+    # Import and reload config to get current values
+    import importlib
+    import config
+    importlib.reload(config)
     
-    if algorithm not in log_directories:
-        return {}
+    # Get current configuration values
+    total_clients = config.Config.number_of_clients
+    total_rounds = config.Config.training_rounds
+    num_servers = config.Config.num_servers
     
-    log_dir = f"logs/{log_directories[algorithm]}"
-    
-    # Get current config values  
+    # Generate dynamic log directory names based on current config
     if algorithm == 'fedavg':
-        total_clients = 3  # Proper federated learning setup
-        total_rounds = 1
+        log_dir_name = f"fedavg-mnist-client-{total_clients}"
     else:
-        total_clients = 3  # Default for other algorithms
-        total_rounds = 2
+        log_dir_name = f"{algorithm}-mnist-client-{total_clients}-server-{num_servers}"
+    
+    log_dir = f"logs/{log_dir_name}"
+    
+    if algorithm not in ['fedshare', 'fedavg', 'scotch']:
+        return {}
         
     progress = {
         'clients_started': 0,
@@ -815,15 +817,21 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
         subprocess.run(['pkill', '-f', f'{algorithm}'], capture_output=True)
         time.sleep(1)
         
-        # Clean up old logs
-        log_dirs = {
-            'fedshare': 'logs/fedshare-mnist-client-3-server-2',
-            'fedavg': 'logs/fedavg-mnist-client-3',
-            'scotch': 'logs/scotch-mnist-client-3-server-2'
-        }
+        # Clean up old logs - generate dynamic log directory names
+        import importlib
+        import config
+        importlib.reload(config)
         
-        if algorithm in log_dirs:
-            subprocess.run(['rm', '-rf', log_dirs[algorithm]], capture_output=True)
+        total_clients = config.Config.number_of_clients
+        num_servers = config.Config.num_servers
+        
+        if algorithm == 'fedavg':
+            log_dir_name = f"fedavg-mnist-client-{total_clients}"
+        else:
+            log_dir_name = f"{algorithm}-mnist-client-{total_clients}-server-{num_servers}"
+        
+        log_dir_path = f"logs/{log_dir_name}"
+        subprocess.run(['rm', '-rf', log_dir_path], capture_output=True)
         
         try:
             script_path = script_map[algorithm]
@@ -852,17 +860,25 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
     
     def show_logs(self, algorithm):
         """Enhanced log viewer with better formatting"""
-        log_directories = {
-            'fedshare': 'fedshare-mnist-client-3-server-2',
-            'fedavg': 'fedavg-mnist-client-3',
-            'scotch': 'scotch-mnist-client-3-server-2'
-        }
-        
-        if algorithm not in log_directories:
+        if algorithm not in ['fedshare', 'fedavg', 'scotch']:
             self.send_error(404, "Invalid algorithm")
             return
         
-        log_dir = f"logs/{log_directories[algorithm]}"
+        # Import and reload config to get current values
+        import importlib
+        import config
+        importlib.reload(config)
+        
+        # Generate dynamic log directory names based on current config
+        total_clients = config.Config.number_of_clients
+        num_servers = config.Config.num_servers
+        
+        if algorithm == 'fedavg':
+            log_dir_name = f"fedavg-mnist-client-{total_clients}"
+        else:
+            log_dir_name = f"{algorithm}-mnist-client-{total_clients}-server-{num_servers}"
+        
+        log_dir = f"logs/{log_dir_name}"
         
         html = f"""<!DOCTYPE html>
 <html>
@@ -991,6 +1007,23 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
                     self.send_error(400, f"Invalid value for {field}: must be a positive integer")
                     return
             
+            # Additional validation for reasonable ranges
+            if new_config['clients'] > 20:
+                self.send_error(400, "Number of clients cannot exceed 20")
+                return
+            if new_config['rounds'] > 50:
+                self.send_error(400, "Number of rounds cannot exceed 50")
+                return
+            if new_config['batch_size'] > 1024:
+                self.send_error(400, "Batch size cannot exceed 1024")
+                return
+            if new_config['train_dataset_size'] > 100000:
+                self.send_error(400, "Dataset size cannot exceed 100,000")
+                return
+            if new_config['epochs'] > 20:
+                self.send_error(400, "Epochs cannot exceed 20")
+                return
+            
             # Read current config.py
             with open('config.py', 'r') as f:
                 config_content = f.read()
@@ -1071,11 +1104,18 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
             running_processes.clear()
             progress_data.clear()
             
-            # Clean up all log directories
+            # Clean up all log directories - use current config to generate names
+            import importlib
+            import config
+            importlib.reload(config)
+            
+            total_clients = config.Config.number_of_clients
+            num_servers = config.Config.num_servers
+            
             log_dirs = [
-                'logs/fedshare-mnist-client-3-server-2',
-                'logs/fedavg-mnist-client-3',
-                'logs/scotch-mnist-client-3-server-2'
+                f'logs/fedshare-mnist-client-{total_clients}-server-{num_servers}',
+                f'logs/fedavg-mnist-client-{total_clients}',
+                f'logs/scotch-mnist-client-{total_clients}-server-{num_servers}'
             ]
             
             for log_dir in log_dirs:

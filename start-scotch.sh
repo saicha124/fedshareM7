@@ -14,8 +14,11 @@ export OMP_NUM_THREADS=1
 export TF_NUM_INTRAOP_THREADS=1
 export TF_NUM_INTEROP_THREADS=1
 
-N=2
-M=3
+# Read configuration from config.py
+N=$(python3 -c "from config import Config; print(Config.num_servers)")
+M=$(python3 -c "from config import Config; print(Config.number_of_clients)")
+
+echo "Configuration: $M clients, $N servers"
 
 DEST_DIRECTORY="scotch-mnist-client-${M}-server-${N}"
 echo "$DEST_DIRECTORY"

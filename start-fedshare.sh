@@ -2,8 +2,11 @@
 
 export PYTHONUNBUFFERED=1
 
-N=2
-M=3
+# Read configuration from config.py
+N=$(python -c "from config import Config; print(Config.num_servers)")
+M=$(python -c "from config import Config; print(Config.number_of_clients)")
+
+echo "Configuration: $M clients, $N servers"
 
 DEST_DIRECTORY="fedshare-mnist-client-${M}-server-${N}"
 echo "$DEST_DIRECTORY"

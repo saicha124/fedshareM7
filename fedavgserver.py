@@ -51,8 +51,11 @@ def recv_thread(data, address, clients_secret: list):
             alpha_list.append(alpha)
         model[layer_index] = np.array(alpha_list).sum(axis=0, dtype=np.float64)
 
+    # Convert dictionary back to list for Keras model.set_weights()
+    model_weights_list = [model[i] for i in range(len(model))]
+    
     clients_secret.clear()
-    pickle_model = pickle.dumps(model)
+    pickle_model = pickle.dumps(model_weights_list)
     flcommon.broadcast_to_clients(pickle_model, config, False)
 
     global total_upload_cost

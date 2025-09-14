@@ -16,6 +16,12 @@ def load_train_dataset(n_clients=3, permute=False):
 
     (x_train, y_train), (_, _) = mnist.load_data()
 
+    # Use the configured train_dataset_size instead of full dataset
+    from config import Config
+    train_size = Config.train_dataset_size
+    x_train = x_train[:train_size]
+    y_train = y_train[:train_size]
+
     x_train = x_train.reshape(x_train.shape[0], feature_vector_length)
 
     if permute == True:

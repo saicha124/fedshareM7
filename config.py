@@ -3,7 +3,7 @@ class Config:
     train_dataset_size = 6000  # Reduced for testing memory issues
     clients_dataset_size = [train_dataset_size/number_of_clients] * number_of_clients
     total_dataset_size = sum(clients_dataset_size)
-    num_servers = 2  # Number of servers (can be modified as needed)
+    num_servers = 3  # Number of servers (can be modified as needed)
     training_rounds = 2  # Single round for testing
     epochs = 1
     batch_size = 16  # Larger batch size for faster training

@@ -810,13 +810,7 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(json.dumps(progress).encode())
     
     def run_algorithm(self, algorithm):
-        script_map = {
-            'fedshare': './start-fedshare.sh',
-            'fedavg': './start-fedavg.sh', 
-            'scotch': './start-scotch.sh'
-        }
-        
-        if algorithm not in script_map:
+        if algorithm not in ['fedshare', 'fedavg', 'scotch']:
             self.send_error(400, "Invalid algorithm")
             return
         
@@ -839,22 +833,31 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
         
         log_dir_path = f"logs/{log_dir_name}"
         subprocess.run(['rm', '-rf', log_dir_path], capture_output=True)
+        os.makedirs(log_dir_path, exist_ok=True)
         
         try:
-            script_path = script_map[algorithm]
-            print(f"Starting {algorithm}: {script_path}")
-            
-            # Start the script
-            process = subprocess.Popen(
-                ['/bin/bash', script_path],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                cwd='.'
-            )
-            
-            running_processes[algorithm] = process
-            progress_data[algorithm] = {'status': 'starting', 'start_time': time.time()}
-            print(f"Started {algorithm} with PID: {process.pid}")
+            if algorithm == 'fedshare':
+                # Start FedShare directly managing all processes
+                self.start_fedshare_processes(log_dir_path, total_clients, num_servers)
+            else:
+                # For other algorithms, use the original shell script approach
+                script_map = {
+                    'fedavg': './start-fedavg.sh', 
+                    'scotch': './start-scotch.sh'
+                }
+                script_path = script_map[algorithm]
+                print(f"Starting {algorithm}: {script_path}")
+                
+                process = subprocess.Popen(
+                    ['/bin/bash', script_path],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    cwd='.'
+                )
+                
+                running_processes[algorithm] = process
+                progress_data[algorithm] = {'status': 'starting', 'start_time': time.time()}
+                print(f"Started {algorithm} with PID: {process.pid}")
             
             self.send_response(200)
             self.send_header('Content-type', 'text/plain')
@@ -864,6 +867,102 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
         except Exception as e:
             print(f"Error starting {algorithm}: {str(e)}")
             self.send_error(500, str(e))
+    
+    def start_fedshare_processes(self, log_dir_path, total_clients, num_servers):
+        """Start FedShare processes directly without shell scripts"""
+        import socket
+        
+        # Dictionary to track all spawned processes
+        fedshare_processes = {}
+        
+        print(f"Starting FedShare with {total_clients} clients and {num_servers} servers")
+        
+        def wait_for_port(host, port, timeout=30):
+            """Wait for a port to be available"""
+            start_time = time.time()
+            while time.time() - start_time < timeout:
+                try:
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    sock.settimeout(1)
+                    result = sock.connect_ex((host, port))
+                    sock.close()
+                    if result == 0:
+                        return True
+                except:
+                    pass
+                time.sleep(1)
+            return False
+        
+        try:
+            # Start logger server
+            log_file = open(f"{log_dir_path}/logger_server.log", "w")
+            process = subprocess.Popen(
+                ['python', '-u', 'logger_server.py'],
+                stdout=log_file,
+                stderr=subprocess.STDOUT,
+                cwd='.',
+                preexec_fn=os.setsid if hasattr(os, 'setsid') else None
+            )
+            fedshare_processes['logger'] = {'process': process, 'log_file': log_file}
+            print(f"Started logger server (PID: {process.pid})")
+            
+            # Start lead server
+            log_file = open(f"{log_dir_path}/fedshareleadserver.log", "w")
+            process = subprocess.Popen(
+                ['python', '-u', 'fedshareleadserver.py'],
+                stdout=log_file,
+                stderr=subprocess.STDOUT,
+                cwd='.',
+                preexec_fn=os.setsid if hasattr(os, 'setsid') else None
+            )
+            fedshare_processes['lead'] = {'process': process, 'log_file': log_file}
+            print(f"Started lead server (PID: {process.pid})")
+            
+            # Start regular servers
+            for i in range(num_servers):
+                log_file = open(f"{log_dir_path}/fedshareserver-{i}.log", "w")
+                process = subprocess.Popen(
+                    ['python', '-u', 'fedshareserver.py', str(i)],
+                    stdout=log_file,
+                    stderr=subprocess.STDOUT,
+                    cwd='.',
+                    preexec_fn=os.setsid if hasattr(os, 'setsid') else None
+                )
+                fedshare_processes[f'server_{i}'] = {'process': process, 'log_file': log_file}
+                print(f"Started server {i} (PID: {process.pid})")
+            
+            # Wait for servers to be ready
+            print("Waiting for servers to initialize...")
+            time.sleep(15)  # Give servers time to start
+            
+            # Start clients
+            for i in range(total_clients):
+                log_file = open(f"{log_dir_path}/fedshareclient-{i}.log", "w")
+                process = subprocess.Popen(
+                    ['python', '-u', 'fedshareclient.py', str(i)],
+                    stdout=log_file,
+                    stderr=subprocess.STDOUT,
+                    cwd='.',
+                    preexec_fn=os.setsid if hasattr(os, 'setsid') else None
+                )
+                fedshare_processes[f'client_{i}'] = {'process': process, 'log_file': log_file}
+                print(f"Started client {i} (PID: {process.pid})")
+            
+            # Store all processes in the global running_processes dict
+            running_processes['fedshare'] = fedshare_processes
+            progress_data['fedshare'] = {'status': 'starting', 'start_time': time.time()}
+            
+            print("FedShare processes started successfully!")
+            
+        except Exception as e:
+            # Clean up any started processes on error
+            for proc_info in fedshare_processes.values():
+                try:
+                    proc_info['process'].terminate()
+                    proc_info['log_file'].close()
+                except:
+                    pass
+            raise e
     
     def show_logs(self, algorithm):
         """Enhanced log viewer with better formatting"""

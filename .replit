@@ -1,4 +1,4 @@
-modules = ["python-3.12", "bash"]
+modules = ["bash", "python-3.11"]
 [agent]
 expertMode = true
 
@@ -54,6 +54,10 @@ localPort = 33787
 externalPort = 3003
 
 [[ports]]
+localPort = 34777
+externalPort = 8081
+
+[[ports]]
 localPort = 34789
 externalPort = 4200
 
@@ -72,10 +76,6 @@ externalPort = 8008
 [[ports]]
 localPort = 43159
 externalPort = 3000
-
-[[ports]]
-localPort = 44091
-externalPort = 8081
 
 [[ports]]
 localPort = 44647

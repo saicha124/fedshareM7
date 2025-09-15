@@ -89,8 +89,8 @@ def parse_logs_for_progress(algorithm):
                     progress['metrics'][f'client_{i}_loss'] = float(loss_matches[-1])
                 
                 # Extract global performance metrics if available
-                global_loss_matches = re.findall(r'📊 Global Test Loss:\s+([+-]?\d*\.?\d+(?:[eE][+-]?\d+)?)', content)
-                global_accuracy_matches = re.findall(r'🎯 Global Test Accuracy:\s+([+-]?\d*\.?\d+(?:[eE][+-]?\d+)?)', content)
+                global_loss_matches = re.findall(r'📊 Global Test Loss:\s+([0-9]*\.?[0-9]+(?:[eE][+-]?[0-9]+)?)', content)
+                global_accuracy_matches = re.findall(r'🎯 Global Test Accuracy:\s+([0-9]*\.?[0-9]+(?:[eE][+-]?[0-9]+)?)', content)
                 if global_loss_matches:
                     progress['metrics']['global_loss'] = float(global_loss_matches[-1])
                 if global_accuracy_matches:

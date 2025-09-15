@@ -598,10 +598,21 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
                 case 'completed':
                     statusMessage = '✅ Training completed successfully!';
                     statusClass = 'status-completed';
-                    clearInterval(updateIntervals[algorithm]);
-                    runBtn.textContent = 'Run ' + algorithm.charAt(0).toUpperCase() + algorithm.slice(1);
-                    runBtn.style.background = 'linear-gradient(145deg, #3498db, #2980b9)';
-                    runBtn.disabled = false;
+                    
+                    // Only stop polling if we have global metrics, otherwise continue polling
+                    const globalMetrics = {};
+                    for (const [key, value] of Object.entries(data.metrics)) {
+                        if (key.startsWith('global_')) {
+                            globalMetrics[key] = value;
+                        }
+                    }
+                    
+                    if (Object.keys(globalMetrics).length > 0) {
+                        clearInterval(updateIntervals[algorithm]);
+                        runBtn.textContent = 'Run ' + algorithm.charAt(0).toUpperCase() + algorithm.slice(1);
+                        runBtn.style.background = 'linear-gradient(145deg, #3498db, #2980b9)';
+                        runBtn.disabled = false;
+                    }
                     break;
             }
             

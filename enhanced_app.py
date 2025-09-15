@@ -954,6 +954,43 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
             
             print("FedShare processes started successfully!")
             
+            # Wait for clients to be fully ready, then initiate training
+            def initiate_training():
+                import time
+                import threading
+                import requests
+                from config import LeadConfig
+                
+                # Wait for all services to be fully ready
+                print("Waiting for all services to be ready before starting training...")
+                time.sleep(10)  # Give clients time to fully initialize
+                
+                # Trigger training start on each client (like flask_starter.py does)
+                def start_client(client_id):
+                    try:
+                        from config import Config
+                        port = Config.client_base_port + client_id
+                        url = f'http://{Config.client_address}:{port}/start'
+                        print(f"Starting training on client {client_id} at {url}")
+                        response = requests.get(url, timeout=10)
+                        print(f"Client {client_id} training started: {response.json()}")
+                    except Exception as e:
+                        print(f"Error starting client {client_id}: {e}")
+                
+                # Start all clients in parallel
+                for client_id in range(total_clients):
+                    client_thread = threading.Thread(target=start_client, args=(client_id,))
+                    client_thread.daemon = True
+                    client_thread.start()
+                    time.sleep(1)  # Small delay between client starts
+                
+                print("Training initiation completed for all clients!")
+            
+            # Start the training initiation in a separate thread
+            training_thread = threading.Thread(target=initiate_training)
+            training_thread.daemon = True
+            training_thread.start()
+            
         except Exception as e:
             # Clean up any started processes on error
             for proc_info in fedshare_processes.values():

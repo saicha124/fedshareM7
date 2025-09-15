@@ -128,6 +128,9 @@ def recv_thread(servers_secret: list, data, address):
 
     global training_round
     if config.training_rounds == training_round:
+        # Evaluate global performance on the final aggregated model
+        flcommon.evaluate_global_performance("SCOTCH", round_weight, mnistcommon.get_model)
+        
         time_logger.finish_training()
         time_logger.print_result()
 

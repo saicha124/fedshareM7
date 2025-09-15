@@ -68,6 +68,38 @@ def check_test_accuracy_simple(x_test, y_test, verbose, weights, model_generator
     print(f"Model test accuracy:\t {results[1]}")
 
 
+def evaluate_global_performance(algorithm_name, weights, model_generator):
+    """
+    Evaluate global accuracy and loss on the complete test dataset after federated learning completion
+    """
+    # Import mnistcommon here to avoid circular imports
+    import mnistcommon
+    
+    # Load the global test dataset
+    x_test, y_test = mnistcommon.load_test_dataset()
+    
+    # Create and configure the model
+    model = model_generator()
+    model.set_weights(weights)
+    
+    # Evaluate the model on the complete test dataset
+    results = model.evaluate(x_test, y_test, verbose=0)
+    
+    # Extract loss and accuracy
+    global_loss = results[0]
+    global_accuracy = results[1]
+    
+    # Print the global performance metrics
+    print("=" * 80)
+    print(f"🎯 GLOBAL PERFORMANCE EVALUATION - {algorithm_name.upper()}")
+    print("=" * 80)
+    print(f"📊 Global Test Loss:     {global_loss:.6f}")
+    print(f"🎯 Global Test Accuracy: {global_accuracy:.6f} ({global_accuracy * 100:.2f}%)")
+    print("=" * 80)
+    
+    return global_loss, global_accuracy
+
+
 def broadcast_to_clients(pickle_model, config, lead_server=False):
     my_threads = []
     for client in range(config.number_of_clients):

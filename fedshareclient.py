@@ -118,6 +118,10 @@ def recv_thread(data, remote_addr):
 
     global training_round
     if config.training_rounds == training_round:
+        # Evaluate global performance on the final aggregated model
+        final_weights = pickle.loads(data)
+        flcommon.evaluate_global_performance("FedShare", final_weights, mnistcommon.get_model)
+        
         time_logger.finish_training()
         time_logger.print_result()
 

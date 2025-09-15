@@ -87,6 +87,14 @@ def parse_logs_for_progress(algorithm):
                     progress['metrics'][f'client_{i}_accuracy'] = float(accuracy_matches[-1])
                 if loss_matches:
                     progress['metrics'][f'client_{i}_loss'] = float(loss_matches[-1])
+                
+                # Extract global performance metrics if available
+                global_loss_matches = re.findall(r'📊 Global Test Loss:\s+([+-]?\d*\.?\d+(?:[eE][+-]?\d+)?)', content)
+                global_accuracy_matches = re.findall(r'🎯 Global Test Accuracy:\s+([+-]?\d*\.?\d+(?:[eE][+-]?\d+)?)', content)
+                if global_loss_matches:
+                    progress['metrics']['global_loss'] = float(global_loss_matches[-1])
+                if global_accuracy_matches:
+                    progress['metrics']['global_accuracy'] = float(global_accuracy_matches[-1])
                     
             except Exception as e:
                 print(f"Error reading client log {client_log}: {e}")
@@ -347,6 +355,78 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
             font-weight: bold;
             color: #2c3e50;
         }
+        
+        /* Global metrics styling */
+        .global-metrics-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .global-metrics-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 0 0 15px 0;
+            text-align: center;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .global-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+        }
+        
+        .global-metric-item {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .global-metric-item:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        .global-metric-label {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            opacity: 0.9;
+        }
+        
+        .global-metric-value {
+            font-size: 28px;
+            font-weight: bold;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .client-metrics-section {
+            margin-top: 15px;
+        }
+        
+        .client-metrics-title {
+            font-size: 18px;
+            color: #2c3e50;
+            margin: 0 0 15px 0;
+            text-align: center;
+            opacity: 0.8;
+        }
+        
+        .client-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
         .info-box {
             background: linear-gradient(145deg, #e8f4fd, #ffffff);
             border-left: 4px solid #3498db;
@@ -530,15 +610,66 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
             // Update metrics
             if (Object.keys(data.metrics).length > 0) {
                 let metricsHTML = '<div class="metrics">';
+                
+                // Separate global metrics from client metrics
+                const globalMetrics = {};
+                const clientMetrics = {};
+                
                 for (const [key, value] of Object.entries(data.metrics)) {
-                    const label = key.replace('_', ' ').toUpperCase();
+                    if (key.startsWith('global_')) {
+                        globalMetrics[key] = value;
+                    } else {
+                        clientMetrics[key] = value;
+                    }
+                }
+                
+                // Display global metrics prominently if training is completed and global metrics exist
+                if (data.status === 'completed' && Object.keys(globalMetrics).length > 0) {
                     metricsHTML += `
-                        <div class="metric-item">
-                            <div class="metric-label">${label}</div>
-                            <div class="metric-value">${typeof value === 'number' ? value.toFixed(4) : value}</div>
+                        <div class="global-metrics-section">
+                            <h3 class="global-metrics-title">🎯 Final Global Performance</h3>
+                            <div class="global-metrics">
+                    `;
+                    
+                    for (const [key, value] of Object.entries(globalMetrics)) {
+                        const label = key.replace('global_', '').replace('_', ' ').toUpperCase();
+                        const icon = key.includes('accuracy') ? '🎯' : '📊';
+                        const percentage = key.includes('accuracy') ? ` (${(value * 100).toFixed(2)}%)` : '';
+                        metricsHTML += `
+                            <div class="global-metric-item">
+                                <div class="global-metric-label">${icon} ${label}</div>
+                                <div class="global-metric-value">${value.toFixed(6)}${percentage}</div>
+                            </div>
+                        `;
+                    }
+                    
+                    metricsHTML += `
+                            </div>
                         </div>
                     `;
                 }
+                
+                // Display client metrics
+                if (Object.keys(clientMetrics).length > 0) {
+                    metricsHTML += '<div class="client-metrics-section">';
+                    if (Object.keys(globalMetrics).length > 0 && data.status === 'completed') {
+                        metricsHTML += '<h4 class="client-metrics-title">Client Performance Details</h4>';
+                    }
+                    metricsHTML += '<div class="client-metrics">';
+                    
+                    for (const [key, value] of Object.entries(clientMetrics)) {
+                        const label = key.replace('_', ' ').toUpperCase();
+                        metricsHTML += `
+                            <div class="metric-item">
+                                <div class="metric-label">${label}</div>
+                                <div class="metric-value">${typeof value === 'number' ? value.toFixed(4) : value}</div>
+                            </div>
+                        `;
+                    }
+                    
+                    metricsHTML += '</div></div>';
+                }
+                
                 metricsHTML += '</div>';
                 metricsContainer.innerHTML = metricsHTML;
             }

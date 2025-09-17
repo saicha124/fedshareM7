@@ -41,6 +41,17 @@ def start_next_round(data):
         f"Dataset Size: {len(x_train)}")
     model.fit(x_train, y_train, epochs=config.epochs, batch_size=config.batch_size, verbose=config.verbose,
               validation_split=config.validation_split)
+    
+    # Evaluate local client performance on test data
+    x_test, y_test = mnistcommon.load_test_dataset()
+    local_results = model.evaluate(x_test, y_test, verbose=0)
+    local_loss = local_results[0]
+    local_accuracy = local_results[1]
+    
+    print(f"Client {config.client_index} Local Performance:")
+    print(f"  loss: {local_loss:.6f}")
+    print(f"  accuracy: {local_accuracy:.6f}")
+    
     # Get model weights and handle different shapes properly
     model_weights = model.get_weights()
     

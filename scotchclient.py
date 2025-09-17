@@ -4,11 +4,16 @@ import threading
 
 import numpy as np
 from flask import Flask, request
+import tensorflow as tf
 
 import flcommon
 import mnistcommon
 import time_logger
 from config import ClientConfig
+
+# Set deterministic seeds for consistent initialization across all clients
+np.random.seed(42)
+tf.random.set_seed(42)
 
 config = ClientConfig(int(sys.argv[1]))
 

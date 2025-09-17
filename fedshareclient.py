@@ -6,11 +6,16 @@ import numpy as np
 import requests
 from flask import Flask, request
 from requests_toolbelt.adapters import source
+import tensorflow as tf
 
 import flcommon
 import mnistcommon
 import time_logger
 from config import ClientConfig
+
+# Set deterministic seeds for consistent initialization across all clients
+np.random.seed(42)
+tf.random.set_seed(42)
 
 config = ClientConfig(int(sys.argv[1]))
 

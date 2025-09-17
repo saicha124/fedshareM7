@@ -41,15 +41,31 @@ def recv_thread(data, address, clients_secret: list):
         return
 
     time_logger.server_start()
-
+    
+    # Calculate correct normalization weights
+    num_participating_clients = len(clients_secret)
+    participating_dataset_sizes = config.clients_dataset_size[:num_participating_clients]
+    total_participating_size = sum(participating_dataset_sizes)
+    
+    # Compute normalized weights that sum to 1.0
+    normalized_weights = [size / total_participating_size for size in participating_dataset_sizes]
+    
+    # Log aggregation weights for debugging
+    print(f"FedAvg Aggregation Details:")
+    print(f"  Participating clients: {num_participating_clients}")
+    print(f"  Dataset sizes: {participating_dataset_sizes}")
+    print(f"  Total size: {total_participating_size}")
+    print(f"  Normalized weights: {normalized_weights}")
+    print(f"  Weights sum: {sum(normalized_weights):.6f}")
+    
+    # Perform weighted aggregation
     model = {}
     for layer_index in range(len(clients_secret[0])):
         alpha_list = []
-        for client_index in range(len(clients_secret)):
-            alpha = clients_secret[client_index][layer_index] * \
-                    (config.clients_dataset_size[client_index] / config.total_dataset_size)
+        for client_index in range(num_participating_clients):
+            alpha = clients_secret[client_index][layer_index] * normalized_weights[client_index]
             alpha_list.append(alpha)
-        model[layer_index] = np.array(alpha_list).sum(axis=0, dtype=np.float64)
+        model[layer_index] = np.array(alpha_list).sum(axis=0, dtype=np.float32)
 
     # Convert dictionary back to list for Keras model.set_weights()
     model_weights_list = [model[i] for i in range(len(model))]

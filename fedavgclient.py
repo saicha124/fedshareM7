@@ -35,9 +35,10 @@ def start_next_round(data):
     model = mnistcommon.get_model()
 
     global training_round
-    if training_round != 0:
+    if data:  # Only load weights if we received data from server
         round_weight = pickle.loads(data)
         model.set_weights(round_weight)
+        print(f"Client {config.client_index} loaded weights from server (round {training_round + 1})")
 
     print(
         f"Model: FedAvg, "

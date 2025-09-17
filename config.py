@@ -4,7 +4,7 @@ class Config:
     clients_dataset_size = [train_dataset_size/number_of_clients] * number_of_clients
     total_dataset_size = sum(clients_dataset_size)
     num_servers = 2  # Number of servers (can be modified as needed)
-    training_rounds = 1  # Single round for testing
+    training_rounds = 5  # Multiple rounds for proper convergence
     epochs = 1
     batch_size = 16  # Larger batch size for faster training
     verbose = 1

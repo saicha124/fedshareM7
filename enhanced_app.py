@@ -1087,37 +1087,130 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
             
             print("FedShare processes started successfully!")
             
-            # Wait for clients to be fully ready, then initiate training
+            # Robust startup synchronization with health checks and retry logic
             def initiate_training():
                 import time
                 import threading
                 import requests
-                from config import LeadConfig
+                import socket
+                from config import Config
                 
-                # Wait for all services to be fully ready
-                print("Waiting for all services to be ready before starting training...")
-                time.sleep(10)  # Give clients time to fully initialize
+                def check_client_health(client_id, max_retries=30, delay=2):
+                    """Check if client is healthy and ready to receive requests"""
+                    port = Config.client_base_port + client_id
+                    health_url = f'http://{Config.client_address}:{port}/'
+                    
+                    for attempt in range(max_retries):
+                        try:
+                            # First check if port is accessible
+                            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                            sock.settimeout(3)
+                            result = sock.connect_ex((Config.client_address, port))
+                            sock.close()
+                            
+                            if result == 0:
+                                # Port is open, now check HTTP health
+                                response = requests.get(health_url, timeout=5)
+                                if response.status_code == 200:
+                                    print(f"✅ Client {client_id} is healthy and ready (port {port})")
+                                    return True
+                                else:
+                                    print(f"⚠️ Client {client_id} port {port} accessible but returned {response.status_code}")
+                            else:
+                                print(f"🔄 Client {client_id} port {port} not ready yet (attempt {attempt + 1}/{max_retries})")
+                        except Exception as e:
+                            print(f"🔄 Client {client_id} health check failed (attempt {attempt + 1}/{max_retries}): {e}")
+                        
+                        time.sleep(delay)
+                    
+                    print(f"❌ Client {client_id} failed health check after {max_retries} attempts")
+                    return False
                 
-                # Trigger training start on each client (like flask_starter.py does)
-                def start_client(client_id):
-                    try:
-                        from config import Config
-                        port = Config.client_base_port + client_id
-                        url = f'http://{Config.client_address}:{port}/start'
-                        print(f"Starting training on client {client_id} at {url}")
-                        response = requests.get(url, timeout=10)
-                        print(f"Client {client_id} training started: {response.json()}")
-                    except Exception as e:
-                        print(f"Error starting client {client_id}: {e}")
+                def start_client_with_retry(client_id, max_retries=5):
+                    """Start client with exponential backoff retry logic"""
+                    port = Config.client_base_port + client_id
+                    url = f'http://{Config.client_address}:{port}/start'
+                    
+                    for attempt in range(max_retries):
+                        try:
+                            delay = min(2 ** attempt, 10)  # Exponential backoff with max 10s
+                            if attempt > 0:
+                                print(f"🔄 Retrying client {client_id} start command (attempt {attempt + 1}/{max_retries})")
+                                time.sleep(delay)
+                            
+                            print(f"🚀 Sending start command to client {client_id} at {url}")
+                            response = requests.get(url, timeout=15)
+                            
+                            if response.status_code == 200:
+                                response_data = response.json()
+                                print(f"✅ Client {client_id} training started successfully: {response_data}")
+                                return True
+                            else:
+                                print(f"⚠️ Client {client_id} returned status {response.status_code}: {response.text}")
+                                
+                        except requests.exceptions.RequestException as e:
+                            print(f"❌ Network error starting client {client_id}: {e}")
+                        except Exception as e:
+                            print(f"❌ Unexpected error starting client {client_id}: {e}")
+                    
+                    print(f"💥 Client {client_id} failed to start after {max_retries} attempts")
+                    return False
                 
-                # Start all clients in parallel
+                print("🔍 Performing comprehensive startup synchronization...")
+                
+                # Phase 1: Wait for all client ports to be available and healthy
+                print("📋 Phase 1: Checking client health and readiness...")
+                client_health_results = {}
+                
                 for client_id in range(total_clients):
-                    client_thread = threading.Thread(target=start_client, args=(client_id,))
-                    client_thread.daemon = True
-                    client_thread.start()
-                    time.sleep(1)  # Small delay between client starts
+                    print(f"🔄 Checking health of client {client_id}...")
+                    client_health_results[client_id] = check_client_health(client_id)
                 
-                print("Training initiation completed for all clients!")
+                # Verify all clients are healthy
+                failed_clients = [cid for cid, healthy in client_health_results.items() if not healthy]
+                if failed_clients:
+                    print(f"💥 CRITICAL: Clients {failed_clients} failed health checks. Cannot proceed with training.")
+                    return False
+                
+                print("✅ All clients passed health checks!")
+                
+                # Phase 2: Send start commands to all clients with retry logic
+                print("📋 Phase 2: Initiating training on all clients...")
+                start_results = {}
+                
+                # Use threading for parallel starts but collect results
+                def threaded_start(client_id, results_dict):
+                    results_dict[client_id] = start_client_with_retry(client_id)
+                
+                threads = []
+                for client_id in range(total_clients):
+                    thread = threading.Thread(target=threaded_start, args=(client_id, start_results))
+                    thread.daemon = True
+                    threads.append(thread)
+                    thread.start()
+                    time.sleep(0.5)  # Small stagger to avoid overwhelming the system
+                
+                # Wait for all threads to complete
+                for thread in threads:
+                    thread.join(timeout=60)  # 60 second timeout per thread
+                
+                # Phase 3: Verify all clients started successfully
+                print("📋 Phase 3: Verifying training initiation results...")
+                failed_starts = [cid for cid, success in start_results.items() if not success]
+                
+                if failed_starts:
+                    print(f"💥 CRITICAL: Clients {failed_starts} failed to start training. Training cannot proceed.")
+                    print("🔧 Consider checking client logs and restarting the training process.")
+                    return False
+                
+                if len(start_results) != total_clients:
+                    missing_clients = [cid for cid in range(total_clients) if cid not in start_results]
+                    print(f"💥 CRITICAL: Missing start results for clients {missing_clients}")
+                    return False
+                
+                print("🎉 SUCCESS: All clients have successfully started training!")
+                print(f"✅ Training initiated on {total_clients} clients with robust synchronization")
+                return True
             
             # Start the training initiation in a separate thread
             training_thread = threading.Thread(target=initiate_training)

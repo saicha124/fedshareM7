@@ -27,7 +27,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "python enhanced_app.py"
+args = "python -u enhanced_app.py"
 waitForPort = 5000
 
 [[ports]]
@@ -86,12 +86,12 @@ localPort = 45145
 externalPort = 6800
 
 [[ports]]
-localPort = 45251
-externalPort = 8081
-
-[[ports]]
 localPort = 45727
 externalPort = 8000
+
+[[ports]]
+localPort = 46669
+externalPort = 8081
 
 [deployment]
 deploymentTarget = "vm"

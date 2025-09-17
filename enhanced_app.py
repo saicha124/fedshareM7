@@ -599,20 +599,11 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
                     statusMessage = '✅ Training completed successfully!';
                     statusClass = 'status-completed';
                     
-                    // Only stop polling if we have global metrics, otherwise continue polling
-                    const globalMetrics = {};
-                    for (const [key, value] of Object.entries(data.metrics)) {
-                        if (key.startsWith('global_')) {
-                            globalMetrics[key] = value;
-                        }
-                    }
-                    
-                    if (Object.keys(globalMetrics).length > 0) {
-                        clearInterval(updateIntervals[algorithm]);
-                        runBtn.textContent = 'Run ' + algorithm.charAt(0).toUpperCase() + algorithm.slice(1);
-                        runBtn.style.background = 'linear-gradient(145deg, #3498db, #2980b9)';
-                        runBtn.disabled = false;
-                    }
+                    // Stop polling when training is completed - no need to check for global metrics
+                    clearInterval(updateIntervals[algorithm]);
+                    runBtn.textContent = 'Run ' + algorithm.charAt(0).toUpperCase() + algorithm.slice(1);
+                    runBtn.style.background = 'linear-gradient(145deg, #3498db, #2980b9)';
+                    runBtn.disabled = false;
                     break;
             }
             
@@ -1430,10 +1421,23 @@ class ReusableTCPServer(socketserver.TCPServer):
     allow_reuse_address = True
 
 def start_server():
-    with ReusableTCPServer(("0.0.0.0", PORT), EnhancedFedShareHandler) as httpd:
-        print(f"🚀 Enhanced FedShare server running on http://0.0.0.0:{PORT}")
-        print("Enhanced interface with real-time progress tracking!")
+    import socketserver
+    
+    PORT = int(os.getenv('PORT', 5000))
+    
+    # Create a threaded HTTP server with proper error handling
+    class ThreadingHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
+        daemon_threads = True
+        allow_reuse_address = True
+    
+    try:
+        httpd = ThreadingHTTPServer(("0.0.0.0", PORT), EnhancedFedShareHandler)
+        print(f"🚀 Enhanced FedShare server running on http://0.0.0.0:{PORT}", flush=True)
+        print("Enhanced interface with real-time progress tracking!", flush=True)
         httpd.serve_forever()
+    except OSError as e:
+        print(f"Startup error: {e}", flush=True)
+        raise
 
 if __name__ == "__main__":
     start_server()

@@ -157,6 +157,10 @@ def recv():
     return {"response": "ok"}
 
 
+@api.route('/', methods=['GET'])
+def health_check():
+    return {"status": "healthy", "client_id": config.client_index}
+
 @api.route('/start', methods=['GET'])
 def start():
     time_logger.start_training()

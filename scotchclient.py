@@ -160,6 +160,10 @@ def recv_thread(servers_secret: list, data, address):
     start_next_round(round_weight)
 
 
+@api.route('/', methods=['GET'])
+def health_check():
+    return {"status": "healthy", "client_id": config.client_index}
+
 @api.route('/start', methods=['GET'])
 def start():
     time_logger.start_training()

@@ -21,6 +21,11 @@ total_download_cost = 0
 servers_secret = []
 
 
+@api.route('/', methods=['GET'])
+def health_check():
+    return {"server_id": "lead", "status": "healthy"}
+
+
 @api.route('/recv', methods=['POST'])
 def recv():
     my_thread = threading.Thread(target=recv_thread, args=(servers_secret, request.data, request.remote_addr))

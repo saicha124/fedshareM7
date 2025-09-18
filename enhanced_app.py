@@ -115,6 +115,14 @@ def parse_logs_for_progress(algorithm):
                 aggregations = content.count('Round completed')
                 aggregation_progress = min(100, (aggregations / max(1, total_rounds)) * 100) if total_rounds > 0 else 0
                 progress['training_progress'] = max(progress['training_progress'], aggregation_progress)
+            
+            # Extract global performance metrics from server logs
+            global_loss_matches = re.findall(r'📊 Global Test Loss:\s+([0-9]*\.?[0-9]+(?:[eE][+-]?[0-9]+)?)', content)
+            global_accuracy_matches = re.findall(r'🎯 Global Test Accuracy:\s+([0-9]*\.?[0-9]+(?:[eE][+-]?[0-9]+)?)', content)
+            if global_loss_matches:
+                progress['metrics']['global_loss'] = float(global_loss_matches[-1])
+            if global_accuracy_matches:
+                progress['metrics']['global_accuracy'] = float(global_accuracy_matches[-1])
                 
         except Exception as e:
             print(f"Error reading server log: {e}")
@@ -129,6 +137,14 @@ def parse_logs_for_progress(algorithm):
             # Check for successful aggregation completion
             if 'Model aggregation completed successfully' in content:
                 progress['training_progress'] = 100
+            
+            # Extract global performance metrics from lead server logs
+            global_loss_matches = re.findall(r'📊 Global Test Loss:\s+([0-9]*\.?[0-9]+(?:[eE][+-]?[0-9]+)?)', content)
+            global_accuracy_matches = re.findall(r'🎯 Global Test Accuracy:\s+([0-9]*\.?[0-9]+(?:[eE][+-]?[0-9]+)?)', content)
+            if global_loss_matches:
+                progress['metrics']['global_loss'] = float(global_loss_matches[-1])
+            if global_accuracy_matches:
+                progress['metrics']['global_accuracy'] = float(global_accuracy_matches[-1])
                 
         except Exception as e:
             print(f"Error reading lead server log: {e}")
@@ -516,6 +532,7 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
     </style>
     <script>
         let updateIntervals = {};
+        let completionCounters = {};
         
         function runAlgorithm(algorithm) {
             const button = document.getElementById(algorithm + '-run-btn');
@@ -599,11 +616,29 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
                     statusMessage = '✅ Training completed successfully!';
                     statusClass = 'status-completed';
                     
-                    // Stop polling when training is completed
-                    clearInterval(updateIntervals[algorithm]);
-                    runBtn.textContent = 'Run ' + algorithm.charAt(0).toUpperCase() + algorithm.slice(1);
-                    runBtn.style.background = 'linear-gradient(145deg, #3498db, #2980b9)';
-                    runBtn.disabled = false;
+                    // Initialize completion tracking
+                    if (!completionCounters[algorithm]) {
+                        completionCounters[algorithm] = 0;
+                    }
+                    completionCounters[algorithm]++;
+                    
+                    // Check if global metrics are present
+                    const hasGlobalMetrics = data.metrics && (data.metrics.global_loss !== undefined || data.metrics.global_accuracy !== undefined);
+                    const maxWaitCycles = 15; // 30 seconds max wait
+                    
+                    if (hasGlobalMetrics || completionCounters[algorithm] >= maxWaitCycles) {
+                        // Global metrics found or timeout reached - stop polling
+                        clearInterval(updateIntervals[algorithm]);
+                        runBtn.textContent = 'Run ' + algorithm.charAt(0).toUpperCase() + algorithm.slice(1);
+                        runBtn.style.background = 'linear-gradient(145deg, #3498db, #2980b9)';
+                        runBtn.disabled = false;
+                        delete completionCounters[algorithm]; // Clean up counter
+                    } else {
+                        // Still waiting for final metrics - show finalizing status
+                        statusMessage = '🔄 Finalizing and capturing final metrics...';
+                        runBtn.textContent = 'Finalizing...';
+                        runBtn.style.background = 'linear-gradient(145deg, #f39c12, #e67e22)';
+                    }
                     break;
             }
             

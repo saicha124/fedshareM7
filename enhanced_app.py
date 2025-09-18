@@ -599,7 +599,7 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
                     statusMessage = '✅ Training completed successfully!';
                     statusClass = 'status-completed';
                     
-                    // Stop polling when training is completed - no need to check for global metrics
+                    // Stop polling when training is completed
                     clearInterval(updateIntervals[algorithm]);
                     runBtn.textContent = 'Run ' + algorithm.charAt(0).toUpperCase() + algorithm.slice(1);
                     runBtn.style.background = 'linear-gradient(145deg, #3498db, #2980b9)';

@@ -44,6 +44,7 @@ Access the web interface at the main URL. Click buttons to run algorithms direct
 - **Configuration Simplified**: Reduced to 1 client, 1 server, 1 training round, 2000 dataset size for stability testing
 - **Python Interpreter**: Standardized Python executable usage in shell scripts
 - **Process Coordination**: Improved startup delays and error handling in start-fedavg.sh
+- **Health Check Endpoints**: Added root "/" endpoints to all federated learning clients (fedshareclient.py, fedavgclient.py, scotchclient.py) to resolve 404 errors during health checks that were causing algorithms to get stuck at 25%
 
 ## Current Status  
 - ✅ **Project fully imported and configured for Replit environment**

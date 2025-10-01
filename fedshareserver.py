@@ -18,6 +18,7 @@ training_round = 0
 
 clients_secret = []
 clients_duration = []
+aggregation_lock = threading.Lock()
 
 total_download_cost = 0
 total_upload_cost = 0
@@ -31,50 +32,51 @@ def recv_thread(clients_secret, data, remote_addr):
 
     print(f"[DOWNLOAD] Secret of {remote_addr} received. size: {len(data)}")
     secret = pickle.loads(data)
-    clients_secret.append(secret)
-    print(f"[SECRET] Secret opened successfully.")
+    
+    # Critical section: protect shared state with lock
+    with aggregation_lock:
+        clients_secret.append(secret)
+        print(f"[SECRET] Secret opened successfully. Total received: {len(clients_secret)}/{config.number_of_clients}")
 
-    if len(clients_secret) != config.number_of_clients:
-        return
+        if len(clients_secret) != config.number_of_clients:
+            return
 
-    time_logger.server_start()
+        time_logger.server_start()
 
-    model = {}
-    for layer_index in range(len(clients_secret[0])):
-        alpha_list = []
-        for client_index in range(config.number_of_clients):
-            alpha = clients_secret[client_index][layer_index] * \
-                    (config.clients_dataset_size[client_index] / config.total_dataset_size)
-            alpha_list.append(alpha)
-        model[layer_index] = np.array(alpha_list).sum(axis=0, dtype=np.float64)
+        model = {}
+        for layer_index in range(len(clients_secret[0])):
+            alpha_list = []
+            for client_index in range(config.number_of_clients):
+                alpha = clients_secret[client_index][layer_index] * \
+                        (config.clients_dataset_size[client_index] / config.total_dataset_size)
+                alpha_list.append(alpha)
+            model[layer_index] = np.array(alpha_list).sum(axis=0, dtype=np.float64)
 
-    pickle_model = pickle.dumps(model)
-    len_dumped_model = len(pickle_model)
+        pickle_model = pickle.dumps(model)
+        len_dumped_model = len(pickle_model)
 
-    time_logger.server_start_upload()
+        time_logger.server_start_upload()
 
-    global total_upload_cost
-    total_upload_cost += len(pickle_model)
+        global total_upload_cost
+        total_upload_cost += len(pickle_model)
 
-    url = f'http://{config.master_server_address}:{config.master_server_port}/recv'
-    s = requests.Session()
-    new_source = source.SourceAddressAdapter(config.server_address)
-    s.mount('http://', new_source)
-    print(s.post(url, pickle_model).json())
+        url = f'http://{config.master_server_address}:{config.master_server_port}/recv'
+        s = requests.Session()
+        new_source = source.SourceAddressAdapter(config.server_address)
+        s.mount('http://', new_source)
+        print(s.post(url, pickle_model).json())
 
-    clients_secret.clear()
+        clients_secret.clear()
 
-    global training_round
-    training_round += 1
+        global training_round
+        training_round += 1
 
-    print(f"[UPLOAD] Sent aggregated weights to the master, size: {len_dumped_model}")
+        print(f"[UPLOAD] Sent aggregated weights to the master, size: {len_dumped_model}")
 
-    print(f"[DOWNLOAD] Total download cost so far: {total_download_cost}")
-    print(f"[UPLOAD] Total upload cost so far: {total_upload_cost}")
+        print(f"[DOWNLOAD] Total download cost so far: {total_download_cost}")
+        print(f"[UPLOAD] Total upload cost so far: {total_upload_cost}")
 
-    print(f"********************** [ROUND] Round {training_round} completed **********************")
-
-
+        print(f"********************** [ROUND] Round {training_round} completed **********************")
 
     time_logger.server_idle()
 

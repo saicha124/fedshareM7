@@ -146,9 +146,10 @@ def health_check():
     return {"client_id": int(sys.argv[1]), "status": "healthy"}
 
 
-@api.route('/start', methods=['POST'])
+@api.route('/start', methods=['GET', 'POST'])
 def start():
-    my_thread = threading.Thread(target=start_next_round, args=(request.data,))
+    data = request.data if request.method == 'POST' else b''
+    my_thread = threading.Thread(target=start_next_round, args=(data,))
     my_thread.start()
     return {"response": "ok"}
 

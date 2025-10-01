@@ -19,6 +19,7 @@ total_upload_cost = 0
 total_download_cost = 0
 
 servers_secret = []
+aggregation_lock = threading.Lock()
 
 
 @api.route('/', methods=['GET'])
@@ -42,35 +43,38 @@ def recv_thread(servers_secret, data, remote_addr):
     print(f"[DOWNLOAD] Secret of {remote_addr} received. size: {len(data)}")
 
     secret = pickle.loads(data)
-    servers_secret.append(secret)
+    
+    # Critical section: protect shared state with lock
+    with aggregation_lock:
+        servers_secret.append(secret)
 
-    print(f"[SECRET] Secret opened successfully.")
+        print(f"[SECRET] Secret opened successfully. Total received: {len(servers_secret)}/{config.num_servers}")
 
-    if len(servers_secret) != config.num_servers:
-        return {"response": "ok"}
+        if len(servers_secret) != config.num_servers:
+            return {"response": "ok"}
 
-    time_logger.lead_server_start()
+        time_logger.lead_server_start()
 
-    fedshare_weights = [None] * len(servers_secret[0])
+        fedshare_weights = [None] * len(servers_secret[0])
 
-    for layer_index in range(len(servers_secret[0])):
-        layer_list = []
-        for server_index in range(config.num_servers):
-            layer_list.append(servers_secret[server_index][layer_index])
-        fedshare_weights[layer_index] = np.array(layer_list).sum(axis=0, dtype=np.float64)
+        for layer_index in range(len(servers_secret[0])):
+            layer_list = []
+            for server_index in range(config.num_servers):
+                layer_list.append(servers_secret[server_index][layer_index])
+            fedshare_weights[layer_index] = np.array(layer_list).sum(axis=0, dtype=np.float64)
 
-    servers_secret.clear()
+        servers_secret.clear()
 
-    pickle_model = pickle.dumps(fedshare_weights)
-    flcommon.broadcast_to_clients(pickle_model, config, lead_server=True)
+        pickle_model = pickle.dumps(fedshare_weights)
+        flcommon.broadcast_to_clients(pickle_model, config, lead_server=True)
 
-    global total_upload_cost
-    total_upload_cost += len(pickle_model) * config.number_of_clients
+        global total_upload_cost
+        total_upload_cost += len(pickle_model) * config.number_of_clients
 
-    print(f"[DOWNLOAD] Total download cost so far: {total_download_cost}")
-    print(f"[UPLOAD] Total upload cost so far: {total_upload_cost}")
+        print(f"[DOWNLOAD] Total download cost so far: {total_download_cost}")
+        print(f"[UPLOAD] Total upload cost so far: {total_upload_cost}")
 
-    print("[AGGREGATION] Model aggregation completed successfully.")
+        print("[AGGREGATION] Model aggregation completed successfully.")
 
     time_logger.lead_server_idle()
 

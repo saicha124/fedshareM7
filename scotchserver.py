@@ -18,6 +18,7 @@ from flask import Flask, request
 api = Flask(__name__)
 
 clients_secret = []
+aggregation_lock = threading.Lock()
 
 total_download_cost = 0
 total_upload_cost = 0
@@ -38,37 +39,42 @@ def recv_thread(clients_secret: list, data, address):
 
     print(f"[SECRET] Secret of {address} received. len(data): {len(data)}")
     secret = pickle.loads(data)
-    clients_secret.append(secret)
-
-    # Only process when we have enough clients (handle duplicates gracefully)
-    if len(clients_secret) < config.number_of_clients:
-        return
-        
-    # Process only the first N clients to handle duplicates
-    current_batch = clients_secret[:config.number_of_clients] 
-    clients_secret.clear()  # Clear all to prevent reprocessing
     
-    model = {}
-    for client_index in range(len(current_batch)):
+    # Critical section: protect shared state with lock
+    with aggregation_lock:
+        clients_secret.append(secret)
+        
+        print(f"[SECRET] Secret received successfully. Total received: {len(clients_secret)}/{config.number_of_clients}")
+
+        # Only process when we have enough clients (handle duplicates gracefully)
+        if len(clients_secret) < config.number_of_clients:
+            return
+            
+        # Process only the first N clients to handle duplicates
+        current_batch = clients_secret[:config.number_of_clients] 
+        clients_secret.clear()  # Clear all to prevent reprocessing
+        
+        model = {}
+        for client_index in range(len(current_batch)):
+            for layer_index in range(len(current_batch[0])):
+                current_batch[client_index][layer_index] = f_to_i_v(
+                    i_to_f_v(current_batch[client_index][layer_index]) / np.float32(config.number_of_clients))
+
         for layer_index in range(len(current_batch[0])):
-            current_batch[client_index][layer_index] = f_to_i_v(
-                i_to_f_v(current_batch[client_index][layer_index]) / np.float32(config.number_of_clients))
+            secrets_summation = np.zeros(shape=current_batch[0][layer_index].shape, dtype=np.uint64)
+            for client_index in range(config.number_of_clients):
+                secrets_summation += current_batch[client_index][layer_index]
+            model[layer_index] = secrets_summation
+        pickled_model = pickle.dumps(model)
+        flcommon.broadcast_to_clients(pickled_model, config, lead_server=False)
 
-    for layer_index in range(len(current_batch[0])):
-        secrets_summation = np.zeros(shape=current_batch[0][layer_index].shape, dtype=np.uint64)
-        for client_index in range(config.number_of_clients):
-            secrets_summation += current_batch[client_index][layer_index]
-        model[layer_index] = secrets_summation
-    pickled_model = pickle.dumps(model)
-    flcommon.broadcast_to_clients(pickled_model, config, lead_server=False)
+        global total_upload_cost
+        total_upload_cost += len(pickled_model) * config.number_of_clients
 
-    global total_upload_cost
-    total_upload_cost += len(pickled_model) * config.number_of_clients
+        print(f"[DOWNLOAD] Total download cost so far: {total_download_cost}")
+        print(f"[UPLOAD] Total upload cost so far: {total_upload_cost}")
 
-    print(f"[DOWNLOAD] Total download cost so far: {total_download_cost}")
-    print(f"[UPLOAD] Total upload cost so far: {total_upload_cost}")
-
-    print(f"********************** [ROUND] Round completed **********************")
+        print(f"********************** [ROUND] Round completed **********************")
 
     time_logger.server_idle()
 

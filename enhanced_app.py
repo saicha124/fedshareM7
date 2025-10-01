@@ -36,7 +36,7 @@ def parse_logs_for_progress(algorithm):
     
     log_dir = f"logs/{log_dir_name}"
     
-    if algorithm not in ['fedshare', 'fedavg', 'scotch']:
+    if algorithm not in ['fedshare', 'fedavg', 'scotch', 'dpsshare']:
         return {}
         
     progress = {
@@ -945,6 +945,29 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
             </div>
         </div>
 
+        <div class="algorithm-section">
+            <div class="algorithm-title">
+                <span class="emoji">🔒</span>DPSShare Algorithm
+            </div>
+            <div class="algorithm-description">
+                Advanced privacy-preserving federated learning combining Differential Privacy and Shamir Secret Sharing.
+                Adds noise to weights for privacy protection and uses polynomial-based secret sharing for secure aggregation.
+            </div>
+            <div class="controls">
+                <button id="dpsshare-run-btn" class="btn" onclick="runAlgorithm('dpsshare')">Run DPSShare</button>
+                <a href="/logs/dpsshare" class="btn btn-success">View Logs</a>
+            </div>
+            <div id="dpsshare-progress" class="progress-container">
+                <div class="progress-bar">
+                    <div id="dpsshare-progress-fill" class="progress-fill">
+                        <div id="dpsshare-progress-text" class="progress-text">0%</div>
+                    </div>
+                </div>
+                <div id="dpsshare-status"></div>
+                <div id="dpsshare-metrics"></div>
+            </div>
+        </div>
+
         <div class="info-box">
             <strong>📋 Training Configuration:</strong>
             <ul style="margin: 10px 0;">
@@ -978,7 +1001,7 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(json.dumps(progress).encode())
     
     def run_algorithm(self, algorithm):
-        if algorithm not in ['fedshare', 'fedavg', 'scotch']:
+        if algorithm not in ['fedshare', 'fedavg', 'scotch', 'dpsshare']:
             self.send_error(400, "Invalid algorithm")
             return
         
@@ -1011,7 +1034,8 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
                 # For other algorithms, use the original shell script approach
                 script_map = {
                     'fedavg': './start-fedavg.sh', 
-                    'scotch': './start-scotch.sh'
+                    'scotch': './start-scotch.sh',
+                    'dpsshare': './start-dpsshare.sh'
                 }
                 script_path = script_map[algorithm]
                 print(f"Starting {algorithm}: {script_path}")
@@ -1525,7 +1549,8 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
             log_dirs = [
                 f'logs/fedshare-mnist-client-{total_clients}-server-{num_servers}',
                 f'logs/fedavg-mnist-client-{total_clients}',
-                f'logs/scotch-mnist-client-{total_clients}-server-{num_servers}'
+                f'logs/scotch-mnist-client-{total_clients}-server-{num_servers}',
+                f'logs/dpsshare-mnist-client-{total_clients}-server-{num_servers}'
             ]
             
             for log_dir in log_dirs:

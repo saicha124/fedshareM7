@@ -18,9 +18,9 @@ The project runs on port 5000 with an enhanced web interface featuring:
 Access the web interface at the main URL. Click buttons to run algorithms directly from the browser.
 
 ## Technical Setup
-- **Frontend**: Enhanced Flask app (`enhanced_app.py`) on port 5000
+- **Frontend**: Enhanced Flask app (`enhanced_app.py`) on port 5000 (bound to 0.0.0.0)
 - **Backend**: Distributed federated learning clients and servers
-- **Configuration**: Optimized for Replit with 3 clients, 2 servers, 2 training rounds
+- **Configuration**: 5 clients, 3 servers, 3 training rounds, batch size 16
 - **Dataset**: MNIST (6,000 samples for faster training)
 - **Deployment**: Configured for VM deployment target
 
@@ -31,13 +31,14 @@ Access the web interface at the main URL. Click buttons to run algorithms direct
 - `logs/` - Training logs and results storage
 
 ## Development Notes  
-- **2025-09-18**: Successfully imported from GitHub and configured for Replit environment
-- **2025-09-18 Import Verification**: All dependencies re-installed and verified working (TensorFlow 2.20.0, Flask 3.1.2, etc.)
-- Python 3.11 environment with proper package installation
+- **2025-10-01**: Fresh GitHub clone successfully configured for Replit environment
+- **2025-10-01 Import Verification**: All dependencies verified working (TensorFlow 2.20.0, Flask 3.1.2, etc.)
+- Python 3.11 module installed with proper package installation
 - Scripts are executable and ready to run
 - Enhanced Flask app running successfully on port 5000 with 0.0.0.0 binding
 - Optimized for fast training iterations in development environment
 - Production deployment configured for VM target
+- Configuration: 5 clients, 3 servers, 3 training rounds, 6K dataset samples
 
 ## Technical Fixes Applied
 - **Flask Debug Mode**: Fixed debug=False and use_reloader=False in fedavgserver.py and fedavgclient.py to prevent nohup conflicts

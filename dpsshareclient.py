@@ -154,8 +154,8 @@ def start():
     return {"response": "ok"}
 
 
-@api.route('/finish', methods=['POST'])
-def finish():
+@api.route('/recv', methods=['POST'])
+def recv():
     global total_download_cost
     total_download_cost += len(request.data)
 

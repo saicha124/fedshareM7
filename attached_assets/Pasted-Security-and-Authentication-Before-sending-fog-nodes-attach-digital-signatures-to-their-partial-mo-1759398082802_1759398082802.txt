@@ -1,0 +1,48 @@
+Security and Authentication
+Before sending, fog nodes attach digital signatures to their partial models.
+This prevents tampering during transmission and ensures integrity. The leader
+server verifies each signature before proceeding with global aggregation:
+V erify(Signfogj(Mfogj)) = T rue ∀j ∈ {1, . . . , n}
+Only authenticated and validated partial models are accepted.
+The partial aggregation by fog nodes, including collection, FedAvg computation, signing, and forwarding to the leader server, is described in Algorithm 7.
+Algorithm 7 Fog Node Partial Aggregation
+Input: Verified shares S1..n from facilities in the fog region
+Output: Partially aggregated model Mfog
+1: Apply FedAvg on received shares: Mfog ← n1 Pn i=1 Si
+2: Send Mfog to leader server for global aggregation
+2.5 Leader Server Aggregation
+The leader server, randomly selected from the pool of fog nodes, is responsible
+for performing the global aggregation. Its primary role is to collect the partial
+models from fog nodes, verify their authenticity, and compute the updated global
+model.
+2.5.1 Input Retrieval
+The leader server retrieves all partial models Mfogj from the fog nodes according to its assigned index IndexLeader:
+Mfog = {Mfog1, Mfog2, . . . , Mfogn}
+2.5.2 Verification of Authenticity
+Each received model is verified using digital signatures to ensure authenticity
+and integrity:
+V erify(Signfogj(Mfogj)) = T rue ∀j ∈ {1, . . . , n}
+162.5.3 Global Aggregation
+The leader server performs the global aggregation strictly as a summation of all
+valid fog node contributions:
+Mglobal = Pn j=1 Mfogj
+This produces the unified global model, which represents the collective knowledge of all participants.
+2.5.4 Global Model Redistribution
+After the leader server computes the global aggregation:
+Mglobal = Pn j=1 Mfogj
+it distributes the resulting global model to all registered medical facilities.
+The broadcast is defined as:
+Broadcast = {Indexuser1||Mglobal, Indexuser2||Mglobal, . . . , Indexusern||Mglobal}
+Each facility receives the aggregated global model Mglobal according to its index. Once received, each facility initializes local training. The model is trained
+for a specified number of epochs E using the facility’s local dataset Di. The
+local update rule is:
+Mlocali = Mglobal − η∇Fi(Mglobal)
+where:
+• η is the learning rate,
+• Fi(x) is the local loss function for facility i,
+• ∇ is the gradient operator.
+After training, each user divides the updated model into secret shares according to the number of fog nodes n, then sends them for committee validation
+and subsequent partial aggregation. This broadcast–train–share cycle repeats
+until the global model Mglobal converges to its final state. The leader server’s
+retrieval of partial models, verification, global aggregation, and redistribution
+of the global model are illustrated in Algorithm

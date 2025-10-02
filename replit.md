@@ -30,6 +30,7 @@ Access the web interface at the main URL. Click buttons to run algorithms direct
 - `config.py` - Configuration for clients, servers, and training parameters
 - `start-*.sh` - Shell scripts to launch federated learning algorithms
 - `logs/` - Training logs and results storage
+- `DPSSHARE_ALGORITHM.md` - Comprehensive documentation of the DPSShare algorithm with CP-ABE, differential privacy, secret sharing, and committee validation mechanisms
 
 ## Development Notes  
 - **2025-10-02**: Fresh GitHub clone successfully imported and configured for Replit environment

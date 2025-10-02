@@ -1,0 +1,70 @@
+ach share sijis transmitted securely to
+the validator committee for verification. Once validated, the committee members perform the broadcast of approved shares to their respective fog nodes as
+follows:
+Broadcast(Committee, sij) → F ogNodej
+This ensures that each fog node j receives the correct and authenticated
+share sij of the differentially private local model. The fog nodes later use these
+shares in the partial aggregation phase.
+The process of local model training, perturbation with differential privacy,
+and splitting into secret shares can be illustrated by Algorithm 4 and Algorithm 5.
+2.4.4 Validation and Committee Mechanism
+After each facility generates shares of its differentially private local model, these
+shares are sent to the validator committee for integrity verification and authentication before being broadcast to fog nodes. The validator committee ensures
+Byzantine fault tolerance, Sybil resistance, and trust in the federation. Proofof-Work for Facility Validation Before any facility can submit its shares, it must
+solve a computational puzzle to prevent spam and Sybil attacks. The Proof-ofWork (PoW) mechanism is defined as:
+12Algorithm 4 Local Training with Differential Privacy
+Input: Initial model Minit, local dataset d, learning rate η, number of epochs
+E, noise scale σ
+Output: Differentially private local model MDP
+local
+1: for epoch = 1 to E do
+2: Compute gradient: ∇Fi(Minit) using local dataset d
+3: Add DP noise: ∇ ← ∇ ˜ Fi(Minit) + N (0, σ2)
+4: Update model: MDP
+local ← Minit − η∇˜
+5: end for
+Algorithm 5 Secret Sharing and Broadcast to Validator Committee
+Input: Local model MDP
+local, number of fog nodes n
+Output: Secret shares S1, S2, ..., Sn
+1: Divide MDP
+local into n shares using Shamir’s Secret Sharing
+2: for each share Si do
+3: Send Si to validator committee for verification
+4: end for
+5: Broadcast approved shares to fog nodes
+H(N ∥ IDfacility) < T
+where:
+• H is a cryptographic hash function,
+• N is a nonce,
+• IDfacility is the facility’s identity,
+• T is the system-defined difficulty threshold.
+Only if the hash output is below the target T, the facility’s request is accepted
+by the committee. This ensures that each facility invests computational effort
+before being able to contribute.
+Digital Signature Authentication
+Each facility signs its shares before sending them to the validator committee:
+Sign(SKfacility, sij) → Sigi
+where SKfacility is the facility’s signing key. The committee verifies:
+13V erify(PKfacility, sij, Sigi) = True
+If the verification fails, the share is discarded. This guarantees authenticity
+and prevents tampering.
+Committee Consensus Voting
+Once authenticated, the committee validates whether the share is consistent
+and well-formed. Each committee member Ck casts a binary vote (1 = valid, 0
+= invalid). The final decision is determined by majority consensus:
+Decision(sij) = (1, if Pm k=1 V otek(sij) ≥ m2 + 1
+0, otherwise
+where m is the number of committee members.
+Only if the majority votes “valid,” the share is approved.
+Secure Broadcast
+Approved shares are then broadcast to their respective fog nodes:
+Broadcast(Committee, sij) → F ogNodej
+Each broadcast message is signed by the committee to ensure end-to-end
+integrity:
+Sign(SKCommittee, sij) → SigCommittee
+The fog node accepts a share only if:
+V erify(PKCommittee, sij, SigCommittee) = True
+This ensures that fog nodes receive only verified and committee-approved
+contributions.
+The validator committee’s verification, consensus voting, and secure broadcast of approved shares are captured in Algorithm 6.

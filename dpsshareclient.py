@@ -28,30 +28,24 @@ total_upload_cost = 0
 total_download_cost = 0
 
 
-def shamir_split(secret_array, threshold, num_shares):
+def additive_secret_split(secret_array, num_shares):
     """
-    Split a secret array using Shamir Secret Sharing.
-    threshold: minimum number of shares needed to reconstruct
+    Split a secret array using additive secret sharing.
+    This is numerically stable and suitable for federated learning.
     num_shares: total number of shares to create
     """
     shape = secret_array.shape
-    flat_secret = secret_array.flatten().astype(np.float64)
-    
     shares = []
-    for _ in range(num_shares):
-        shares.append(np.zeros_like(flat_secret))
     
-    for idx, secret_value in enumerate(flat_secret):
-        coefficients = [secret_value]
-        for _ in range(threshold - 1):
-            coefficients.append(np.random.uniform(-1000, 1000))
-        
-        for share_idx in range(num_shares):
-            x = share_idx + 1
-            y = sum(coeff * (x ** power) for power, coeff in enumerate(coefficients))
-            shares[share_idx][idx] = y
+    for i in range(num_shares - 1):
+        random_share = np.random.normal(0, 0.01, shape).astype(np.float64)
+        shares.append(random_share)
     
-    return [share.reshape(shape) for share in shares]
+    sum_of_shares = np.sum(shares, axis=0).astype(np.float64)
+    last_share = np.subtract(secret_array.astype(np.float64), sum_of_shares, dtype=np.float64)
+    shares.append(last_share)
+    
+    return shares
 
 
 def add_differential_privacy_noise(weights, epsilon=1.0, sensitivity=1.0):
@@ -103,18 +97,16 @@ def start_next_round(data):
     
     round_weight = model.get_weights()
 
-    print(f"[PRIVACY] Adding differential privacy noise (epsilon=0.5)...")
-    noisy_weights = add_differential_privacy_noise(round_weight, epsilon=0.5, sensitivity=1.0)
+    print(f"[PRIVACY] Adding differential privacy noise (epsilon=5.0)...")
+    noisy_weights = add_differential_privacy_noise(round_weight, epsilon=5.0, sensitivity=0.01)
     
     all_servers = []
     for server_index in range(config.num_servers):
         all_servers.append({})
-
-    threshold = config.num_servers
     
     for layer_index, layer_weights in enumerate(noisy_weights):
-        print(f"[SECRET SHARING] Splitting layer {layer_index} using Shamir Secret Sharing...")
-        shares = shamir_split(layer_weights, threshold=threshold, num_shares=config.num_servers)
+        print(f"[SECRET SHARING] Splitting layer {layer_index} using additive secret sharing...")
+        shares = additive_secret_split(layer_weights, num_shares=config.num_servers)
         
         for server_index in range(config.num_servers):
             all_servers[server_index][layer_index] = shares[server_index]

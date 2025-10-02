@@ -21,31 +21,13 @@ total_download_cost = 0
 servers_secret = []
 
 
-def shamir_reconstruct(shares, threshold):
+def additive_reconstruct(shares):
     """
-    Reconstruct secret from Shamir Secret Shares using Lagrange interpolation.
-    shares: list of (x, y) pairs where x is the share index and y is the share value
-    threshold: number of shares needed (unused but kept for compatibility)
+    Reconstruct secret from additive secret shares by summing them.
+    shares: list of share arrays
     """
-    shape = shares[0][1].shape
-    flat_shares = [(x, y.flatten().astype(np.float64)) for x, y in shares]
-    
-    reconstructed = np.zeros_like(flat_shares[0][1])
-    
-    for idx in range(len(reconstructed)):
-        points = [(x, y[idx]) for x, y in flat_shares]
-        
-        result = 0.0
-        for i, (xi, yi) in enumerate(points):
-            term = yi
-            for j, (xj, _) in enumerate(points):
-                if i != j:
-                    term *= (0 - xj) / (xi - xj)
-            result += term
-        
-        reconstructed[idx] = result
-    
-    return reconstructed.reshape(shape)
+    reconstructed = np.sum(shares, axis=0).astype(np.float64)
+    return reconstructed
 
 
 @api.route('/', methods=['GET'])
@@ -78,18 +60,16 @@ def recv_thread(servers_secret, data, remote_addr):
 
     time_logger.lead_server_start()
 
-    print("[RECONSTRUCTION] Reconstructing secret using Shamir Secret Sharing...")
+    print("[RECONSTRUCTION] Reconstructing secret using additive secret sharing...")
     
     dpsshare_weights = []
     
     for layer_index in range(len(servers_secret[0])):
-        shares_with_indices = []
+        shares = []
         for server_index in range(config.num_servers):
-            x = server_index + 1
-            y = servers_secret[server_index][layer_index]
-            shares_with_indices.append((x, y))
+            shares.append(servers_secret[server_index][layer_index])
         
-        reconstructed_layer = shamir_reconstruct(shares_with_indices, threshold=config.num_servers)
+        reconstructed_layer = additive_reconstruct(shares)
         dpsshare_weights.append(reconstructed_layer)
 
     servers_secret.clear()
@@ -103,7 +83,7 @@ def recv_thread(servers_secret, data, remote_addr):
     print(f"[DOWNLOAD] Total download cost so far: {total_download_cost}")
     print(f"[UPLOAD] Total upload cost so far: {total_upload_cost}")
 
-    print("[AGGREGATION] Model aggregation with Shamir reconstruction completed successfully.")
+    print("[AGGREGATION] Model aggregation with additive secret sharing completed successfully.")
 
     time_logger.lead_server_idle()
 

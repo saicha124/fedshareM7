@@ -1288,7 +1288,7 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
     
     def show_logs(self, algorithm):
         """Enhanced log viewer with better formatting"""
-        if algorithm not in ['fedshare', 'fedavg', 'scotch']:
+        if algorithm not in ['fedshare', 'fedavg', 'scotch', 'dpsshare']:
             self.send_error(404, "Invalid algorithm")
             return
         

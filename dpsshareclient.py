@@ -12,6 +12,7 @@ import flcommon
 import mnistcommon
 import time_logger
 from config import ClientConfig
+from dpsshare_security import ProofOfWork, DigitalSignature
 
 np.random.seed(42)
 tf.random.set_seed(42)
@@ -104,6 +105,20 @@ def start_next_round(data):
     for server_index in range(config.num_servers):
         all_servers.append({})
     
+    facility_id = f"client_{config.client_index}"
+    
+    print(f"\n{'='*70}")
+    print(f"[SECURITY] DPSShare Security Protocol Initiated")
+    print(f"{'='*70}")
+    
+    print(f"[PROOF-OF-WORK] Computing PoW challenge for Sybil attack prevention...")
+    print(f"[PROOF-OF-WORK] Facility ID: {facility_id}")
+    nonce, pow_time = ProofOfWork.compute_pow(facility_id, difficulty=4)
+    print(f"[PROOF-OF-WORK] ✓ PoW solved! Nonce: {nonce}, Time: {pow_time:.4f}s")
+    print(f"[PROOF-OF-WORK] ✓ Verification: {ProofOfWork.verify_pow(facility_id, nonce, 4)}")
+    
+    signing_key = DigitalSignature.generate_key(facility_id)
+    
     for layer_index, layer_weights in enumerate(noisy_weights):
         print(f"[SECRET SHARING] Splitting layer {layer_index} using additive secret sharing...")
         shares = additive_secret_split(layer_weights, num_shares=config.num_servers)
@@ -114,11 +129,26 @@ def start_next_round(data):
     global total_upload_cost
 
     pickle_model_list = []
+    signature_list = []
+    
     for server in range(config.num_servers):
-        pickle_model_list.append(pickle.dumps(all_servers[server]))
+        share_data = pickle.dumps(all_servers[server])
+        
+        signature = DigitalSignature.sign(share_data, signing_key)
+        signature_list.append(signature)
+        
+        signed_package = {
+            'share': share_data,
+            'signature': signature,
+            'facility_id': facility_id,
+            'nonce': nonce
+        }
+        
+        pickle_model_list.append(pickle.dumps(signed_package))
         len_serialized_model = len(pickle_model_list[server])
         total_upload_cost += len_serialized_model
-        print(f"[Upload] Size of the object to send to server {server} is {len_serialized_model}")
+        print(f"[DIGITAL SIGNATURE] Share {server} signed: {signature[:16]}...")
+        print(f"[Upload] Size of signed package to server {server}: {len_serialized_model}")
 
     flcommon.send_to_servers(pickle_model_list, config)
 

@@ -303,5 +303,20 @@ The current implementation uses:
 - **Flask-based API** for communication between clients, servers, and leader
 - **Weighted Averaging** for model aggregation based on dataset sizes
 - **TensorFlow** for neural network training
+- **HMAC-SHA256** for digital signatures (simplified for demonstration)
+- **SHA-256 PoW** with configurable difficulty for Sybil attack prevention
 
 This design ensures both security and practical usability in real-world federated learning scenarios.
+
+### Security Implementation Note
+
+**Important**: The current security implementation is simplified for research and demonstration purposes. In a production deployment:
+
+1. **Key Management**: Private keys should be generated using proper cryptographic key generation (e.g., RSA, ECDSA) and securely stored, not derived deterministically from public identifiers
+2. **PKI Infrastructure**: A proper Public Key Infrastructure should be deployed with certificate authorities
+3. **Encryption**: CP-ABE encryption for model distribution should use established libraries (e.g., Charm-Crypto)
+4. **Authentication**: Consider OAuth 2.0 or similar standards for facility authentication
+5. **Key Rotation**: Implement regular key rotation policies
+6. **Secure Channels**: Use TLS/SSL for all network communications
+
+The current implementation demonstrates the **workflow and protocol structure** as specified in the algorithm design, providing a foundation that can be extended with production-grade cryptographic libraries.

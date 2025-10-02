@@ -8,6 +8,7 @@ from flask import Flask, request
 import flcommon
 import time_logger
 from config import LeadConfig
+from dpsshare_security import FogNodeSecurity
 
 api = Flask(__name__)
 
@@ -48,19 +49,49 @@ def recv_thread(servers_secret, data, remote_addr):
 
     time_logger.lead_server_received()
 
-    print(f"[DOWNLOAD] Secret share of {remote_addr} received. size: {len(data)}")
+    print(f"\n{'='*70}")
+    print(f"[LEADER SERVER] GLOBAL AGGREGATION PHASE")
+    print(f"{'='*70}")
+    print(f"[DOWNLOAD] Signed fog node package from {remote_addr} received. size: {len(data)}")
 
-    secret = pickle.loads(data)
+    signed_fog_package = pickle.loads(data)
+    partial_model_data = signed_fog_package['partial_model']
+    fog_signature = signed_fog_package['fog_signature']
+    fog_node_id = signed_fog_package['fog_node_id']
+    
+    print(f"[LEADER SERVER] Fog Node: {fog_node_id}")
+    print(f"[LEADER SERVER] Verifying fog node signature for authenticity...")
+    
+    signature_valid = FogNodeSecurity.verify_fog_signature(
+        partial_model_data, 
+        fog_signature, 
+        fog_node_id
+    )
+    
+    print(f"[LEADER SERVER] Signature verification: {'✓ PASSED' if signature_valid else '✗ FAILED'}")
+    
+    if not signature_valid:
+        print(f"[LEADER SERVER] ✗ Partial model rejected - Invalid fog node signature")
+        return {"response": "error", "message": "Invalid signature"}
+    
+    print(f"[LEADER SERVER] ✓ Fog node {fog_node_id} authenticated")
+
+    secret = pickle.loads(partial_model_data)
     servers_secret.append(secret)
 
-    print(f"[SECRET] Secret share opened successfully.")
+    print(f"[SECRET] Partial model from authenticated fog node accepted.")
+    print(f"[PROGRESS] Collected {len(servers_secret)}/{config.num_servers} fog node contributions")
 
     if len(servers_secret) != config.num_servers:
         return {"response": "ok"}
 
     time_logger.lead_server_start()
 
-    print("[RECONSTRUCTION] Reconstructing secret using additive secret sharing...")
+    print(f"\n{'='*70}")
+    print(f"[LEADER SERVER] ALL FOG NODES VERIFIED - GLOBAL AGGREGATION")
+    print(f"{'='*70}")
+    print(f"[RECONSTRUCTION] Reconstructing global model from {config.num_servers} fog node shares...")
+    print(f"[RECONSTRUCTION] Using additive secret sharing reconstruction...")
     
     dpsshare_weights = []
     
@@ -71,19 +102,36 @@ def recv_thread(servers_secret, data, remote_addr):
         
         reconstructed_layer = additive_reconstruct(shares)
         dpsshare_weights.append(reconstructed_layer)
+    
+    print(f"[RECONSTRUCTION] ✓ Global model reconstructed with {len(dpsshare_weights)} layers")
 
     servers_secret.clear()
 
     pickle_model = pickle.dumps(dpsshare_weights)
+    
+    print(f"\n[GLOBAL MODEL REDISTRIBUTION]")
+    print(f"[BROADCAST] Distributing global model M_global to all {config.number_of_clients} facilities...")
+    print(f"[BROADCAST] Model size: {len(pickle_model)} bytes")
+    
     flcommon.broadcast_to_clients(pickle_model, config, lead_server=True)
 
     global total_upload_cost
     total_upload_cost += len(pickle_model) * config.number_of_clients
 
-    print(f"[DOWNLOAD] Total download cost so far: {total_download_cost}")
-    print(f"[UPLOAD] Total upload cost so far: {total_upload_cost}")
+    print(f"[BROADCAST] ✓ Global model distributed to all facilities")
+    print(f"\n[STATISTICS]")
+    print(f"[DOWNLOAD] Total download cost: {total_download_cost} bytes")
+    print(f"[UPLOAD] Total upload cost: {total_upload_cost} bytes")
 
-    print("[AGGREGATION] Model aggregation with additive secret sharing completed successfully.")
+    print(f"\n{'='*70}")
+    print("[AGGREGATION] ✓ DPSShare global aggregation cycle completed")
+    print("[AGGREGATION] Security features applied:")
+    print("  ✓ Proof-of-Work validation")
+    print("  ✓ Digital signature authentication")
+    print("  ✓ Validator committee consensus")
+    print("  ✓ Fog node regional aggregation")
+    print("  ✓ Leader server global aggregation")
+    print(f"{'='*70}\n")
 
     time_logger.lead_server_idle()
 

@@ -1,6 +1,7 @@
 import pickle
 import sys
 import threading
+import json
 
 import numpy as np
 import requests
@@ -27,6 +28,132 @@ round_weight = 0
 training_round = 0
 total_upload_cost = 0
 total_download_cost = 0
+
+TA_PORT = 9600
+TA_URL = f"http://127.0.0.1:{TA_PORT}"
+facility_secret_key = None
+facility_attributes = {'role': 'hospital', 'region': 'North'}
+
+
+def register_with_ta(facility_id: str) -> bool:
+    """
+    Register facility with Trusted Authority using PoW
+    Algorithm 2: Facility Registration with Proof-of-Work
+    """
+    global facility_secret_key, facility_attributes
+    
+    print(f"\n{'='*70}")
+    print(f"[TA REGISTRATION] Registering with Trusted Authority")
+    print(f"{'='*70}")
+    print(f"[TA REGISTRATION] Facility ID: {facility_id}")
+    print(f"[TA REGISTRATION] Computing PoW challenge...")
+    
+    nonce, pow_time = ProofOfWork.compute_pow(facility_id, difficulty=4)
+    print(f"[TA REGISTRATION] ✓ PoW solved! Nonce: {nonce}, Time: {pow_time:.4f}s")
+    
+    try:
+        response = requests.post(
+            f"{TA_URL}/register",
+            json={
+                'facility_id': facility_id,
+                'nonce': nonce,
+                'attributes': facility_attributes
+            },
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            if result.get('success'):
+                facility_secret_key = result['secret_key']
+                print(f"[TA REGISTRATION] ✓ Registration successful")
+                print(f"[TA REGISTRATION] ✓ Secret key received from TA")
+                print(f"[TA REGISTRATION] ✓ Attributes verified: {facility_attributes}")
+                return True
+            else:
+                print(f"[TA REGISTRATION] ✗ Registration failed: {result.get('error')}")
+                return False
+        else:
+            print(f"[TA REGISTRATION] ✗ Registration failed: HTTP {response.status_code}")
+            return False
+            
+    except Exception as e:
+        print(f"[TA REGISTRATION] ✗ Connection to TA failed: {e}")
+        return False
+
+
+def request_encrypted_model_from_leader() -> bytes:
+    """
+    Request encrypted model from Leader Server (which gets it from TA)
+    Algorithm 3: Initial Model Distribution and Decryption
+    """
+    print(f"\n[MODEL REQUEST] Requesting encrypted model from Leader Server...")
+    print(f"[MODEL REQUEST] Leader Server acts as intermediary with TA")
+    
+    leader_url = f"http://{config.master_server_address}:{config.master_server_port}"
+    
+    try:
+        response = requests.get(f"{leader_url}/get_encrypted_model", timeout=10)
+        
+        if response.status_code == 200:
+            result = response.json()
+            if result.get('success'):
+                encrypted_model = pickle.loads(bytes.fromhex(result['ciphertext']))
+                print(f"[MODEL REQUEST] ✓ Encrypted model received from Leader Server")
+                return encrypted_model
+            else:
+                print(f"[MODEL REQUEST] ✗ Failed to get model: {result.get('error')}")
+                return None
+        else:
+            print(f"[MODEL REQUEST] ✗ Failed: HTTP {response.status_code}")
+            return None
+            
+    except Exception as e:
+        print(f"[MODEL REQUEST] ✗ Failed to connect to Leader Server: {e}")
+        return None
+
+
+def decrypt_model_with_cpabe(encrypted_model, sk: str, attributes: dict):
+    """
+    Decrypt CP-ABE encrypted model
+    Algorithm 3: User Decrypt(CT, SK_facility) → Model
+    """
+    print(f"\n[CP-ABE DECRYPTION] Decrypting model with facility secret key...")
+    print(f"[CP-ABE DECRYPTION] Verifying access policy against attributes: {attributes}")
+    
+    try:
+        policy = encrypted_model['policy']
+        
+        policy_satisfied = all(
+            attributes.get(attr) == value
+            for attr, value in policy.items()
+        )
+        
+        if not policy_satisfied:
+            print(f"[CP-ABE DECRYPTION] ✗ Access denied - Policy not satisfied")
+            print(f"[CP-ABE DECRYPTION] Required: {policy}")
+            print(f"[CP-ABE DECRYPTION] Facility has: {attributes}")
+            return None
+        
+        print(f"[CP-ABE DECRYPTION] ✓ Access policy satisfied")
+        
+        import hashlib
+        pk = encrypted_model['pk']
+        encryption_key = hashlib.sha256(f"{pk}_{json.dumps(policy, sort_keys=True)}".encode()).digest()
+        
+        decrypted_data = bytearray()
+        for i, byte in enumerate(encrypted_model['ct']):
+            decrypted_data.append(byte ^ encryption_key[i % len(encryption_key)])
+        
+        model_weights = pickle.loads(bytes(decrypted_data))
+        print(f"[CP-ABE DECRYPTION] ✓ Model successfully decrypted")
+        print(f"[CP-ABE DECRYPTION] ✓ Ready for local training")
+        
+        return model_weights
+        
+    except Exception as e:
+        print(f"[CP-ABE DECRYPTION] ✗ Decryption failed: {e}")
+        return None
 
 
 def additive_secret_split(secret_array, num_shares):
@@ -72,8 +199,32 @@ def start_next_round(data):
     x_train, y_train = client_datasets[config.client_index][0], client_datasets[config.client_index][1]
 
     model = mnistcommon.get_model()
-    global training_round
-    if training_round != 0:
+    global training_round, facility_secret_key
+    
+    if training_round == 0:
+        facility_id = f"client_{config.client_index}"
+        
+        if facility_secret_key is None:
+            registered = register_with_ta(facility_id)
+            if not registered:
+                print(f"[ERROR] Failed to register with TA. Using default initialization.")
+                model.set_weights(model.get_weights())
+            else:
+                encrypted_model = request_encrypted_model_from_leader()
+                if encrypted_model:
+                    initial_weights = decrypt_model_with_cpabe(
+                        encrypted_model,
+                        facility_secret_key,
+                        facility_attributes
+                    )
+                    if initial_weights:
+                        model.set_weights(initial_weights)
+                        print(f"[MODEL INIT] ✓ Model initialized with TA-encrypted weights")
+                    else:
+                        print(f"[MODEL INIT] ✗ Decryption failed, using default weights")
+                else:
+                    print(f"[MODEL INIT] ✗ Failed to get encrypted model, using default weights")
+    elif training_round != 0:
         global round_weight
         round_weight = pickle.loads(data)
         model.set_weights(round_weight)

@@ -3,7 +3,8 @@ import threading
 import time
 
 import numpy as np
-from flask import Flask, request
+import requests
+from flask import Flask, request, jsonify
 
 import flcommon
 import time_logger
@@ -21,6 +22,10 @@ total_download_cost = 0
 
 servers_secret = []
 
+TA_PORT = 9600
+TA_URL = f"http://127.0.0.1:{TA_PORT}"
+encrypted_model_cache = None
+
 
 def additive_reconstruct(shares):
     """
@@ -31,9 +36,63 @@ def additive_reconstruct(shares):
     return reconstructed
 
 
+def fetch_encrypted_model_from_ta():
+    """
+    Fetch encrypted model from Trusted Authority
+    Leader server acts as intermediary between TA and facilities
+    """
+    global encrypted_model_cache
+    
+    print(f"\n{'='*70}")
+    print(f"[LEADER SERVER] Fetching encrypted model from Trusted Authority")
+    print(f"{'='*70}")
+    
+    try:
+        response = requests.get(f"{TA_URL}/get_encrypted_model", timeout=10)
+        
+        if response.status_code == 200:
+            result = response.json()
+            if result.get('success'):
+                encrypted_model_cache = result['ciphertext']
+                print(f"[LEADER SERVER] ✓ Encrypted model received from TA")
+                print(f"[LEADER SERVER] ✓ Model cached for facility distribution")
+                return True
+            else:
+                print(f"[LEADER SERVER] ✗ Failed: {result.get('error')}")
+                return False
+        else:
+            print(f"[LEADER SERVER] ✗ HTTP {response.status_code}")
+            return False
+            
+    except Exception as e:
+        print(f"[LEADER SERVER] ✗ Connection to TA failed: {e}")
+        return False
+
+
 @api.route('/', methods=['GET'])
 def health_check():
     return {"server_id": "lead", "status": "healthy"}
+
+
+@api.route('/get_encrypted_model', methods=['GET'])
+def get_encrypted_model():
+    """
+    Provide encrypted model to facilities
+    Facilities authenticate and request encrypted model from leader server
+    """
+    global encrypted_model_cache
+    
+    if encrypted_model_cache is None:
+        print(f"[LEADER SERVER] No cached model, fetching from TA...")
+        if not fetch_encrypted_model_from_ta():
+            return jsonify({'success': False, 'error': 'Failed to fetch model from TA'}), 500
+    
+    print(f"[LEADER SERVER] Distributing encrypted model to facility")
+    
+    return jsonify({
+        'success': True,
+        'ciphertext': encrypted_model_cache
+    })
 
 
 @api.route('/recv', methods=['POST'])

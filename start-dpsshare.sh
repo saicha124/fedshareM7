@@ -11,11 +11,62 @@ PYTHON=$(command -v python)
 M=$($PYTHON -c "from config import Config; print(Config.number_of_clients)")
 N=$($PYTHON -c "from config import Config; print(Config.num_servers)")
 
-echo "DPSShare Configuration: $M clients, $N servers (with Differential Privacy and Shamir Secret Sharing)"
+echo "DPSShare Configuration: $M clients, $N servers (with Differential Privacy and Shamir Secret Sharing + TA)"
 
 DEST_DIRECTORY="logs/dpsshare-mnist-client-${M}-server-${N}"
 echo "Log directory: $DEST_DIRECTORY"
 mkdir -p ${DEST_DIRECTORY}
+
+echo "=========================================="
+echo "PHASE 1: Starting Trusted Authority (TA)"
+echo "=========================================="
+echo "Starting TA server on port 9600..."
+nohup $PYTHON trusted_authority.py 9600 > ${DEST_DIRECTORY}/trusted_authority.log 2>&1 &
+TA_PID=$!
+sleep 3
+
+echo "Initializing TA system (CP-ABE setup)..."
+$PYTHON -c "
+import requests
+import pickle
+import mnistcommon
+import json
+
+# Initialize TA system
+response = requests.post('http://127.0.0.1:9600/setup', json={
+    'num_facilities': ${M},
+    'pow_difficulty': 4,
+    'security_param': 256
+})
+
+if response.status_code == 200:
+    print('[TA INIT] ✓ TA system initialized successfully')
+    
+    # Create initial model and encrypt it
+    model = mnistcommon.get_model()
+    initial_weights = model.get_weights()
+    
+    # Encrypt model with CP-ABE
+    response = requests.post('http://127.0.0.1:9600/encrypt_model', json={
+        'model_hex': pickle.dumps(initial_weights).hex(),
+        'policy': {'role': 'hospital', 'region': 'North'}
+    })
+    
+    if response.status_code == 200:
+        print('[TA INIT] ✓ Initial model encrypted with CP-ABE')
+        print('[TA INIT] ✓ Access policy: role=hospital, region=North')
+    else:
+        print('[TA INIT] ✗ Model encryption failed')
+else:
+    print('[TA INIT] ✗ TA initialization failed')
+"
+
+sleep 2
+
+echo ""
+echo "=========================================="
+echo "PHASE 2: Starting Federated Infrastructure"
+echo "=========================================="
 
 echo "Starting logger server..."
 nohup $PYTHON logger_server.py > ${DEST_DIRECTORY}/logger_server.log 2>&1 &

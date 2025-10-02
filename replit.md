@@ -32,9 +32,10 @@ Access the web interface at the main URL. Click buttons to run algorithms direct
 - `logs/` - Training logs and results storage
 - `DPSSHARE_ALGORITHM.md` - Comprehensive documentation of the DPSShare algorithm with CP-ABE, differential privacy, secret sharing, and committee validation mechanisms
 - `dpsshare_security.py` - Security module implementing PoW, digital signatures, validator committee, and fog node authentication
-- `dpsshareclient.py` - DPSShare client with integrated security features
+- `dpsshareclient.py` - DPSShare client with integrated security features and TA registration
 - `dpsshareserver.py` - DPSShare fog nodes with validator committee and regional aggregator role
 - `dpsshareleadserver.py` - DPSShare leader server with fog signature verification and global aggregation
+- `trusted_authority.py` - Trusted Authority module with mock CP-ABE encryption for system initialization and model distribution
 
 ## Development Notes  
 - **2025-10-02**: Fresh GitHub clone successfully imported and configured for Replit environment
@@ -66,6 +67,15 @@ Access the web interface at the main URL. Click buttons to run algorithms direct
     - Fog nodes now explicitly assume regional aggregator role after validation
     - Leader server verifies fog node signatures before global aggregation
     - Complete security chain: PoW → Digital Signatures → Committee Validation → Fog Aggregation → Global Aggregation
+  - **Trusted Authority Integration (2025-10-02)**:
+    - Implemented mock CP-ABE (Ciphertext-Policy Attribute-Based Encryption) for demonstration
+    - Algorithm 1: System initialization with public key (PK) and master secret key (MSK) generation
+    - Algorithm 2: Facility registration with PoW verification and attribute-based key issuance
+    - Algorithm 3: Model distribution with CP-ABE encryption and policy-based access control
+    - TA runs on port 9600 and manages system initialization, facility registration, and encrypted model distribution
+    - Leader server acts as intermediary between TA and facilities for encrypted model distribution
+    - Clients register with TA, retrieve encrypted models, and decrypt using CP-ABE before training
+    - Complete workflow: TA Setup → Facility Registration (PoW) → Model Encryption → Distribution → Client Decryption → Training
 
 ## Current Status  
 - ✅ **Project fully imported and configured for Replit environment (2025-10-02)**

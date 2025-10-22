@@ -173,9 +173,7 @@ class ValidatorCommittee:
         """
         basic_checks = len(share_data) > 0 and len(signature) > 0
         
-        random_factor = random.random() > 0.05
-        
-        return 1 if (basic_checks and random_factor) else 0
+        return 1 if basic_checks else 0
     
     def sign_approved_share(self, share_data: bytes) -> str:
         """

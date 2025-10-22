@@ -68,17 +68,22 @@ def parse_logs_for_progress(algorithm):
                     latest_round = max([int(r[0]) for r in rounds])
                     progress['current_round'] = max(progress['current_round'], latest_round)
                 
-                # Extract training completion
-                completed_rounds = content.count('completed')
-                training_finished = content.count('Training finished')
+                # Extract training completion - look for specific patterns
+                training_finished = 'Training finished' in content
+                
+                # Count actual round completions more accurately
+                round_completion_matches = re.findall(r'\*+ Round \d+ completed \*+', content)
+                completed_rounds = len(round_completion_matches)
                 
                 # If training is finished, set to 100%, otherwise calculate based on actual total rounds
-                if training_finished > 0:
+                if training_finished:
                     progress['training_progress'] = 100
-                else:
+                    progress['status'] = 'completed'
+                elif completed_rounds > 0:
                     # Calculate percentage based on actual total rounds
                     round_progress = min(100, (completed_rounds / max(1, total_rounds)) * 100) if total_rounds > 0 else 0
                     progress['training_progress'] = max(progress['training_progress'], round_progress)
+                    progress['status'] = 'training'
                 
                 # Extract accuracy/loss if available
                 accuracy_matches = re.findall(r'accuracy: ([\d.]+)', content)

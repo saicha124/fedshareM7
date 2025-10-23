@@ -779,6 +779,8 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
                 setTimeout(() => {
                     statusDiv.innerHTML = '';
                 }, 5000);
+                // Update the training configuration display
+                updateTrainingConfigDisplay();
             })
             .catch(error => {
                 console.error('Error:', error);
@@ -789,6 +791,20 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
                 submitBtn.innerHTML = originalText;
                 submitBtn.disabled = false;
             });
+        }
+        
+        function updateTrainingConfigDisplay() {
+            fetch('/current_config')
+                .then(response => response.json())
+                .then(config => {
+                    document.getElementById('config-clients').textContent = config.number_of_clients + ' distributed nodes';
+                    document.getElementById('config-dataset').textContent = 'MNIST (' + config.train_dataset_size.toLocaleString() + ' samples total)';
+                    document.getElementById('config-rounds').textContent = config.training_rounds + ' training rounds';
+                    document.getElementById('config-batch-size').textContent = config.batch_size + ' (optimized for speed)';
+                })
+                .catch(error => {
+                    console.error('Error updating config display:', error);
+                });
         }
         
         function loadCurrentConfig() {
@@ -883,6 +899,7 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
         window.addEventListener('load', function() {
             loadCurrentConfig();
             loadDPSShareConfig();
+            updateTrainingConfigDisplay();
         });
         
         // Removed automatic page refresh to prevent interrupting training progress
@@ -1083,11 +1100,11 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
 
         <div class="info-box">
             <strong>📋 Training Configuration:</strong>
-            <ul style="margin: 10px 0;">
-                <li><strong>Clients:</strong> 3 distributed nodes</li>
-                <li><strong>Dataset:</strong> MNIST (6,000 samples total)</li>
-                <li><strong>Rounds:</strong> 2 training rounds</li>
-                <li><strong>Batch Size:</strong> 32 (optimized for speed)</li>
+            <ul style="margin: 10px 0;" id="training-config">
+                <li><strong>Clients:</strong> <span id="config-clients">Loading...</span></li>
+                <li><strong>Dataset:</strong> <span id="config-dataset">Loading...</span></li>
+                <li><strong>Rounds:</strong> <span id="config-rounds">Loading...</span></li>
+                <li><strong>Batch Size:</strong> <span id="config-batch-size">Loading...</span></li>
                 <li><strong>Results:</strong> Automatic accuracy and loss tracking</li>
             </ul>
         </div>

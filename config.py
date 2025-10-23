@@ -21,6 +21,14 @@ class Config:
     logger_address = '127.0.0.1'
     logger_port = 8778
     delay = 10
+    
+    # DPSShare-specific: Differential Privacy configuration
+    dp_epsilon = 5.0  # Privacy budget (smaller = more privacy, more noise)
+    dp_sensitivity = 0.01  # Sensitivity of the query (max change in output)
+    
+    # DPSShare-specific: Secret Sharing configuration
+    num_shares = 3  # Number of shares to split the model into
+    threshold = 2  # Minimum shares needed to reconstruct
 
 
 class ClientConfig(Config):

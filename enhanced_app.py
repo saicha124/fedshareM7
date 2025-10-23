@@ -172,6 +172,8 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
     def do_POST(self):
         if self.path == '/config':
             self.update_config()
+        elif self.path == '/dpsshare_config':
+            self.update_dpsshare_config()
         else:
             self.send_error(404, "Not Found")
     
@@ -813,8 +815,75 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
                 });
         }
         
+        // DPSShare Configuration functions
+        function updateDPSShareConfig(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            const configData = {
+                dp_epsilon: parseFloat(formData.get('dp_epsilon')),
+                dp_sensitivity: parseFloat(formData.get('dp_sensitivity')),
+                num_shares: parseInt(formData.get('num_shares')),
+                threshold: parseInt(formData.get('threshold'))
+            };
+            
+            const submitBtn = event.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '⏳ Updating...';
+            submitBtn.disabled = true;
+            
+            fetch('/dpsshare_config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(configData)
+            })
+            .then(response => response.text())
+            .then(data => {
+                const statusDiv = document.getElementById('dpsshare-config-status');
+                statusDiv.innerHTML = '<div class="config-success">✅ DPSShare privacy configuration updated successfully!</div>';
+                setTimeout(() => {
+                    statusDiv.innerHTML = '';
+                }, 5000);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                const statusDiv = document.getElementById('dpsshare-config-status');
+                statusDiv.innerHTML = '<div class="config-error">❌ Error updating DPSShare configuration: ' + error + '</div>';
+            })
+            .finally(() => {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            });
+        }
+        
+        function loadDPSShareConfig() {
+            fetch('/current_config')
+                .then(response => response.json())
+                .then(config => {
+                    document.getElementById('dp_epsilon').value = config.dp_epsilon;
+                    document.getElementById('dp_sensitivity').value = config.dp_sensitivity;
+                    document.getElementById('num_shares').value = config.num_shares;
+                    document.getElementById('threshold').value = config.threshold;
+                    
+                    const statusDiv = document.getElementById('dpsshare-config-status');
+                    statusDiv.innerHTML = '<div class="config-success">📥 DPSShare configuration loaded from config.py</div>';
+                    setTimeout(() => {
+                        statusDiv.innerHTML = '';
+                    }, 3000);
+                })
+                .catch(error => {
+                    console.error('Error loading DPSShare config:', error);
+                    const statusDiv = document.getElementById('dpsshare-config-status');
+                    statusDiv.innerHTML = '<div class="config-error">❌ Error loading DPSShare configuration</div>';
+                });
+        }
+        
         // Load current config on page load
-        window.addEventListener('load', loadCurrentConfig);
+        window.addEventListener('load', function() {
+            loadCurrentConfig();
+            loadDPSShareConfig();
+        });
         
         // Removed automatic page refresh to prevent interrupting training progress
     </script>
@@ -958,6 +1027,45 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
                 Advanced privacy-preserving federated learning combining Differential Privacy and Shamir Secret Sharing.
                 Adds noise to weights for privacy protection and uses polynomial-based secret sharing for secure aggregation.
             </div>
+            
+            <div class="algorithm-section" style="background: linear-gradient(145deg, #fff3e0, #ffffff); border-color: #ff9800; margin: 15px 0;">
+                <div class="algorithm-title" style="font-size: 18px;">
+                    <span class="emoji">🔐</span>DPSShare Privacy Configuration
+                </div>
+                <div class="algorithm-description" style="font-size: 14px;">
+                    Configure differential privacy and secret sharing parameters specific to DPSShare algorithm.
+                </div>
+                <form id="dpsshare-config-form" onsubmit="updateDPSShareConfig(event)">
+                    <div class="config-grid">
+                        <div class="config-item">
+                            <label for="dp_epsilon">Epsilon (Privacy Budget):</label>
+                            <input type="number" id="dp_epsilon" name="dp_epsilon" min="0.1" max="10" step="0.1" value="5.0">
+                            <small style="color: #666;">Smaller = more privacy, more noise</small>
+                        </div>
+                        <div class="config-item">
+                            <label for="dp_sensitivity">Sensitivity:</label>
+                            <input type="number" id="dp_sensitivity" name="dp_sensitivity" min="0.001" max="1" step="0.001" value="0.01">
+                            <small style="color: #666;">Max change in output</small>
+                        </div>
+                        <div class="config-item">
+                            <label for="num_shares">Number of Shares:</label>
+                            <input type="number" id="num_shares" name="num_shares" min="2" max="10" value="3">
+                            <small style="color: #666;">Split model into N shares</small>
+                        </div>
+                        <div class="config-item">
+                            <label for="threshold">Reconstruction Threshold:</label>
+                            <input type="number" id="threshold" name="threshold" min="2" max="10" value="2">
+                            <small style="color: #666;">Min shares to reconstruct</small>
+                        </div>
+                    </div>
+                    <div class="controls" style="margin-top: 15px;">
+                        <button type="submit" class="btn">💾 Update DPSShare Config</button>
+                        <button type="button" class="btn btn-success" onclick="loadDPSShareConfig()">🔄 Load Current</button>
+                    </div>
+                </form>
+                <div id="dpsshare-config-status" style="margin-top: 10px;"></div>
+            </div>
+            
             <div class="controls">
                 <button id="dpsshare-run-btn" class="btn" onclick="runAlgorithm('dpsshare')">Run DPSShare</button>
                 <a href="/logs/dpsshare" class="btn btn-success">View Logs</a>
@@ -1410,7 +1518,11 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
                 'training_rounds': config.Config.training_rounds,
                 'batch_size': config.Config.batch_size,
                 'train_dataset_size': config.Config.train_dataset_size,
-                'epochs': config.Config.epochs
+                'epochs': config.Config.epochs,
+                'dp_epsilon': config.Config.dp_epsilon,
+                'dp_sensitivity': config.Config.dp_sensitivity,
+                'num_shares': config.Config.num_shares,
+                'threshold': config.Config.threshold
             }
             
             self.send_response(200)
@@ -1507,6 +1619,76 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
             
         except Exception as e:
             print(f"Error updating config: {str(e)}")
+            self.send_error(500, str(e))
+    
+    def update_dpsshare_config(self):
+        """Update DPSShare-specific configuration in config.py"""
+        try:
+            # Get the request body
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            new_config = json.loads(post_data.decode('utf-8'))
+            
+            # Validate the configuration
+            required_fields = ['dp_epsilon', 'dp_sensitivity', 'num_shares', 'threshold']
+            for field in required_fields:
+                if field not in new_config:
+                    self.send_error(400, f"Missing required field: {field}")
+                    return
+            
+            # Validate ranges
+            if new_config['dp_epsilon'] <= 0 or new_config['dp_epsilon'] > 20:
+                self.send_error(400, "Epsilon must be between 0 and 20")
+                return
+            if new_config['dp_sensitivity'] <= 0 or new_config['dp_sensitivity'] > 10:
+                self.send_error(400, "Sensitivity must be between 0 and 10")
+                return
+            if new_config['num_shares'] < 2 or new_config['num_shares'] > 20:
+                self.send_error(400, "Number of shares must be between 2 and 20")
+                return
+            if new_config['threshold'] < 2 or new_config['threshold'] > new_config['num_shares']:
+                self.send_error(400, "Threshold must be between 2 and number of shares")
+                return
+            
+            # Read current config.py
+            with open('config.py', 'r') as f:
+                config_content = f.read()
+            
+            # Update the DPSShare configuration values
+            config_content = re.sub(
+                r'dp_epsilon = [0-9]*\.?[0-9]+',
+                f'dp_epsilon = {new_config["dp_epsilon"]}',
+                config_content
+            )
+            config_content = re.sub(
+                r'dp_sensitivity = [0-9]*\.?[0-9]+',
+                f'dp_sensitivity = {new_config["dp_sensitivity"]}',
+                config_content
+            )
+            config_content = re.sub(
+                r'num_shares = \d+',
+                f'num_shares = {new_config["num_shares"]}',
+                config_content
+            )
+            config_content = re.sub(
+                r'threshold = \d+',
+                f'threshold = {new_config["threshold"]}',
+                config_content
+            )
+            
+            # Write the updated config back
+            with open('config.py', 'w') as f:
+                f.write(config_content)
+            
+            print(f"DPSShare configuration updated: {new_config}")
+            
+            self.send_response(200)
+            self.send_header('Content-type', 'text/plain')
+            self.end_headers()
+            self.wfile.write("DPSShare configuration updated successfully!".encode())
+            
+        except Exception as e:
+            print(f"Error updating DPSShare config: {str(e)}")
             self.send_error(500, str(e))
 
     def reinitialize_all(self):

@@ -249,8 +249,8 @@ def start_next_round(data):
     
     round_weight = model.get_weights()
 
-    print(f"[PRIVACY] Adding differential privacy noise (epsilon=5.0)...")
-    noisy_weights = add_differential_privacy_noise(round_weight, epsilon=5.0, sensitivity=0.01)
+    print(f"[PRIVACY] Adding differential privacy noise (epsilon={config.dp_epsilon}, sensitivity={config.dp_sensitivity})...")
+    noisy_weights = add_differential_privacy_noise(round_weight, epsilon=config.dp_epsilon, sensitivity=config.dp_sensitivity)
     
     all_servers = []
     for server_index in range(config.num_servers):

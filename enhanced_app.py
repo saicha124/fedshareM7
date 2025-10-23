@@ -15,6 +15,54 @@ PORT = 5000
 # Track running processes and their progress
 running_processes = {}
 progress_data = {}
+saved_results = set()  # Track saved results to avoid duplicates
+
+# Results storage
+RESULTS_FILE = 'results/training_results.json'
+
+def save_algorithm_result(algorithm, config_data, metrics):
+    """Save algorithm results to a JSON file for comparison"""
+    try:
+        # Load existing results
+        if os.path.exists(RESULTS_FILE):
+            with open(RESULTS_FILE, 'r') as f:
+                results = json.load(f)
+        else:
+            results = []
+        
+        # Create result entry
+        result_entry = {
+            'timestamp': datetime.now().isoformat(),
+            'algorithm': algorithm,
+            'configuration': config_data,
+            'metrics': metrics
+        }
+        
+        # Append and save
+        results.append(result_entry)
+        
+        # Ensure directory exists
+        os.makedirs(os.path.dirname(RESULTS_FILE), exist_ok=True)
+        
+        with open(RESULTS_FILE, 'w') as f:
+            json.dump(results, f, indent=2)
+        
+        print(f"✅ Saved results for {algorithm}: {metrics}")
+        return True
+    except Exception as e:
+        print(f"❌ Error saving results: {e}")
+        return False
+
+def load_all_results():
+    """Load all saved results from file"""
+    try:
+        if os.path.exists(RESULTS_FILE):
+            with open(RESULTS_FILE, 'r') as f:
+                return json.load(f)
+        return []
+    except Exception as e:
+        print(f"Error loading results: {e}")
+        return []
 
 def parse_logs_for_progress(algorithm):
     """Parse log files to extract training progress"""
@@ -159,6 +207,24 @@ def parse_logs_for_progress(algorithm):
         progress['status'] = 'not_started'
     elif progress['training_progress'] >= 100:
         progress['status'] = 'completed'
+        
+        # Save results when training completes
+        if 'global_accuracy' in progress['metrics'] or 'global_loss' in progress['metrics']:
+            # Check if we've already saved this result (to avoid duplicates)
+            result_key = f"{algorithm}_{total_clients}_{total_rounds}_{datetime.now().strftime('%Y%m%d_%H%M')}"
+            
+            if result_key not in saved_results:
+                config_data = {
+                    'clients': total_clients,
+                    'servers': num_servers,
+                    'rounds': total_rounds,
+                    'batch_size': config.Config.batch_size,
+                    'dataset_size': config.Config.train_dataset_size,
+                    'epochs': config.Config.epochs
+                }
+                
+                save_algorithm_result(algorithm, config_data, progress['metrics'])
+                saved_results.add(result_key)
     elif progress['clients_started'] < progress['total_clients']:
         progress['status'] = 'starting_clients'
     elif progress['current_round'] < progress['total_rounds']:
@@ -199,6 +265,12 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
             self.get_status(algorithm)
         elif self.path == '/current_config':
             self.get_current_config()
+        elif self.path == '/results':
+            self.get_results()
+        elif self.path == '/comparison':
+            self.show_comparison()
+        elif self.path == '/clear_results':
+            self.clear_results()
         else:
             super().do_GET()
     
@@ -1108,6 +1180,19 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
                 <li><strong>Results:</strong> Automatic accuracy and loss tracking</li>
             </ul>
         </div>
+        
+        <div class="algorithm-section" style="background: linear-gradient(145deg, #e8f5fd, #ffffff); border-color: #3498db; text-align: center;">
+            <div class="algorithm-title">
+                <span class="emoji">📊</span>Algorithm Performance Comparison
+            </div>
+            <div class="algorithm-description">
+                View detailed comparison charts and tables of all algorithm results. Results are automatically saved after each training run.
+            </div>
+            <div class="controls" style="justify-content: center;">
+                <a href="/comparison" class="btn" style="background: linear-gradient(145deg, #3498db, #2980b9);">📈 View Comparison Chart</a>
+                <a href="/results" class="btn btn-success" download="results.json">💾 Download Results (JSON)</a>
+            </div>
+        </div>
     </div>
 </body>
 </html>"""
@@ -1773,6 +1858,362 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
         except Exception as e:
             print(f"Error during reinitialization: {str(e)}")
             self.send_error(500, f"Reinitialization failed: {str(e)}")
+    
+    def get_results(self):
+        """Get all saved results as JSON"""
+        try:
+            results = load_all_results()
+            
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Cache-Control', 'no-cache')
+            self.end_headers()
+            self.wfile.write(json.dumps(results, indent=2).encode())
+            
+        except Exception as e:
+            print(f"Error getting results: {str(e)}")
+            self.send_error(500, str(e))
+    
+    def clear_results(self):
+        """Clear all saved results"""
+        try:
+            global saved_results
+            
+            if os.path.exists(RESULTS_FILE):
+                os.remove(RESULTS_FILE)
+            
+            saved_results.clear()
+            
+            self.send_response(200)
+            self.send_header('Content-type', 'text/plain')
+            self.end_headers()
+            self.wfile.write("All results cleared successfully!".encode())
+            
+        except Exception as e:
+            print(f"Error clearing results: {str(e)}")
+            self.send_error(500, str(e))
+    
+    def show_comparison(self):
+        """Show algorithm comparison chart"""
+        try:
+            results = load_all_results()
+            
+            html = """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Algorithm Comparison - FedShare Framework</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 30px;
+        }
+        .back-btn {
+            background: linear-gradient(145deg, #95a5a6, #7f8c8d);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            text-decoration: none;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+        .clear-btn {
+            background: linear-gradient(145deg, #e74c3c, #c0392b);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            float: right;
+            margin-bottom: 20px;
+        }
+        .charts-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 30px;
+            margin-top: 30px;
+        }
+        .chart-box {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .chart-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+        }
+        .results-table th {
+            background: linear-gradient(145deg, #34495e, #2c3e50);
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+        .results-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        .results-table tr:hover {
+            background: #f8f9fa;
+        }
+        .no-results {
+            text-align: center;
+            padding: 60px;
+            color: #7f8c8d;
+            font-style: italic;
+        }
+        .download-btn {
+            background: linear-gradient(145deg, #3498db, #2980b9);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-btn">← Back to Main</a>
+        <button class="clear-btn" onclick="clearResults()">🗑️ Clear All Results</button>
+        <a href="/results" class="download-btn" download="results.json">💾 Download JSON</a>
+        
+        <h1>📊 Algorithm Performance Comparison</h1>
+        <p class="subtitle">Compare training results across different federated learning algorithms</p>
+"""
+            
+            if not results:
+                html += """
+        <div class="no-results">
+            <h2>No Results Available</h2>
+            <p>Run some algorithms to see comparison charts here!</p>
+        </div>
+"""
+            else:
+                # Prepare data for charts
+                algorithms_data = {}
+                for result in results:
+                    algo = result['algorithm']
+                    if algo not in algorithms_data:
+                        algorithms_data[algo] = []
+                    algorithms_data[algo].append(result)
+                
+                # Add charts
+                html += """
+        <div class="charts-container">
+            <div class="chart-box">
+                <div class="chart-title">Accuracy Comparison</div>
+                <canvas id="accuracyChart"></canvas>
+            </div>
+            <div class="chart-box">
+                <div class="chart-title">Loss Comparison</div>
+                <canvas id="lossChart"></canvas>
+            </div>
+        </div>
+        
+        <h2 style="margin-top: 40px; color: #2c3e50;">Detailed Results</h2>
+        <table class="results-table">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Algorithm</th>
+                    <th>Clients</th>
+                    <th>Rounds</th>
+                    <th>Batch Size</th>
+                    <th>Dataset Size</th>
+                    <th>Accuracy</th>
+                    <th>Loss</th>
+                </tr>
+            </thead>
+            <tbody>
+"""
+                
+                for result in reversed(results):  # Show newest first
+                    timestamp = result.get('timestamp', 'N/A')
+                    algo = result.get('algorithm', 'N/A')
+                    config = result.get('configuration', {})
+                    metrics = result.get('metrics', {})
+                    
+                    accuracy = metrics.get('global_accuracy', 'N/A')
+                    loss = metrics.get('global_loss', 'N/A')
+                    
+                    # Format values
+                    if isinstance(accuracy, (int, float)):
+                        accuracy = f"{accuracy:.4f}"
+                    if isinstance(loss, (int, float)):
+                        loss = f"{loss:.4f}"
+                    
+                    html += f"""
+                <tr>
+                    <td>{timestamp[:19]}</td>
+                    <td><strong>{algo}</strong></td>
+                    <td>{config.get('clients', 'N/A')}</td>
+                    <td>{config.get('rounds', 'N/A')}</td>
+                    <td>{config.get('batch_size', 'N/A')}</td>
+                    <td>{config.get('dataset_size', 'N/A')}</td>
+                    <td>{accuracy}</td>
+                    <td>{loss}</td>
+                </tr>
+"""
+                
+                html += """
+            </tbody>
+        </table>
+"""
+                
+                # Add JavaScript for charts
+                html += """
+    <script>
+        const results = """ + json.dumps(results) + """;
+        
+        // Prepare data for charts
+        const algorithms = [...new Set(results.map(r => r.algorithm))];
+        const colors = {
+            'fedshare': '#3498db',
+            'fedavg': '#2ecc71',
+            'scotch': '#e67e22',
+            'dpsshare': '#9b59b6'
+        };
+        
+        // Accuracy Chart
+        const accuracyData = {
+            labels: results.map((r, i) => `${r.algorithm} (${new Date(r.timestamp).toLocaleTimeString()})`),
+            datasets: [{
+                label: 'Accuracy',
+                data: results.map(r => r.metrics.global_accuracy || 0),
+                backgroundColor: results.map(r => colors[r.algorithm] || '#95a5a6'),
+                borderColor: results.map(r => colors[r.algorithm] || '#7f8c8d'),
+                borderWidth: 2
+            }]
+        };
+        
+        new Chart(document.getElementById('accuracyChart'), {
+            type: 'bar',
+            data: accuracyData,
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 1,
+                        ticks: {
+                            callback: function(value) {
+                                return (value * 100).toFixed(0) + '%';
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return 'Accuracy: ' + (context.parsed.y * 100).toFixed(2) + '%';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Loss Chart
+        const lossData = {
+            labels: results.map((r, i) => `${r.algorithm} (${new Date(r.timestamp).toLocaleTimeString()})`),
+            datasets: [{
+                label: 'Loss',
+                data: results.map(r => r.metrics.global_loss || 0),
+                backgroundColor: results.map(r => colors[r.algorithm] || '#95a5a6'),
+                borderColor: results.map(r => colors[r.algorithm] || '#7f8c8d'),
+                borderWidth: 2
+            }]
+        };
+        
+        new Chart(document.getElementById('lossChart'), {
+            type: 'bar',
+            data: lossData,
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+        
+        function clearResults() {
+            if (confirm('Are you sure you want to clear all saved results? This action cannot be undone.')) {
+                fetch('/clear_results')
+                    .then(response => response.text())
+                    .then(data => {
+                        alert('All results cleared successfully!');
+                        location.reload();
+                    })
+                    .catch(error => {
+                        alert('Error clearing results: ' + error);
+                    });
+            }
+        }
+    </script>
+"""
+            
+            html += """
+    </div>
+</body>
+</html>"""
+            
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html')
+            self.send_header('Cache-Control', 'no-cache')
+            self.end_headers()
+            self.wfile.write(html.encode())
+            
+        except Exception as e:
+            print(f"Error showing comparison: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            self.send_error(500, str(e))
 
 class ReusableTCPServer(socketserver.TCPServer):
     allow_reuse_address = True

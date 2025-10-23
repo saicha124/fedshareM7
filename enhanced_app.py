@@ -1805,6 +1805,7 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
                 'fedshareclient.py', 'fedshareserver.py', 'fedshareleadserver.py',
                 'fedavgclient.py', 'fedavgserver.py',
                 'scotchclient.py', 'scotchserver.py',
+                'dpsshareclient.py', 'dpsshareserver.py',
                 'logger_server.py', 'flask_starter.py'
             ]
             
@@ -1812,17 +1813,23 @@ class EnhancedFedShareHandler(http.server.SimpleHTTPRequestHandler):
                 subprocess.run(['pkill', '-f', process_name], capture_output=True)
             
             # Also kill by algorithm names for broader cleanup
-            algorithms = ['fedshare', 'fedavg', 'scotch']
+            algorithms = ['fedshare', 'fedavg', 'scotch', 'dpsshare']
             for algorithm in algorithms:
                 subprocess.run(['pkill', '-f', algorithm], capture_output=True)
             
             # Clean up tracked processes
-            for algorithm, process in running_processes.items():
-                if process and process.poll() is None:
-                    try:
-                        process.terminate()
-                    except:
-                        pass
+            for algorithm, process_data in running_processes.items():
+                try:
+                    if isinstance(process_data, dict):
+                        # FedShare stores a dict of processes
+                        for proc in process_data.values():
+                            if hasattr(proc, 'poll') and proc.poll() is None:
+                                proc.terminate()
+                    elif hasattr(process_data, 'poll') and process_data.poll() is None:
+                        # Other algorithms store a single process
+                        process_data.terminate()
+                except:
+                    pass
             
             running_processes.clear()
             progress_data.clear()
